@@ -22,7 +22,7 @@ importers:
 
   packages/napi:
     specifiers:
-      '@napi-rs/cli': ^2.14.3
+      '@napi-rs/cli': ^2.14.6
     devDependencies:
       '@napi-rs/cli': 2.14.6
 
