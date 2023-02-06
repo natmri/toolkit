@@ -170,7 +170,7 @@ jobs:
         shell: bash
       - name: Install dependencies
         working-directory: ${{ env.APP_DIR }}
-        run: pnpm install --ignore-scripts --frozen-lockfile --registry https://registry.npmjs.org --network-timeout 300000
+        run: pnpm install --frozen-lockfile --registry https://registry.npmjs.org
       - name: Build in docker
         uses: addnab/docker-run-action@v3
         if: ${{ matrix.settings.docker }}
@@ -216,7 +216,7 @@ jobs:
             npm-cache-
       - name: Install dependencies
         working-directory: ${{ env.APP_DIR }}
-        run: pnpm install --ignore-scripts --frozen-lockfile --registry https://registry.npmjs.org --network-timeout 300000
+        run: pnpm install --frozen-lockfile --registry https://registry.npmjs.org
       - name: Download all artifacts
         uses: actions/download-artifact@v3
         with:
