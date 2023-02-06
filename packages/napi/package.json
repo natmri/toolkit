@@ -25,7 +25,6 @@
         "aarch64-pc-windows-msvc",
         "armv7-unknown-linux-gnueabihf",
         "x86_64-unknown-linux-musl",
-        "x86_64-unknown-freebsd",
         "i686-pc-windows-msvc"
       ]
     }
@@ -38,19 +37,19 @@
     "test": "vitest --run --passWithNoTests",
     "version": "napi version"
   },
-  "devDependencies": {
-    "@napi-rs/cli": "^2.14.6"
-  },
   "optionalDependencies": {
-    "@natmri/rust-napi-win32-ia32-msvc": "*",
-    "@natmri/rust-napi-win32-x64-msvc": "*",
-    "@natmri/rust-napi-win32-arm64-msvc": "*",
-    "@natmri/rust-napi-darwin-x64": "*",
     "@natmri/rust-napi-darwin-arm64": "*",
+    "@natmri/rust-napi-darwin-x64": "*",
     "@natmri/rust-napi-linux-arm-gnueabihf": "*",
+    "@natmri/rust-napi-linux-arm64-gnu": "*",
+    "@natmri/rust-napi-linux-arm64-musl": "*",
     "@natmri/rust-napi-linux-x64-gnu": "*",
     "@natmri/rust-napi-linux-x64-musl": "*",
-    "@natmri/rust-napi-linux-arm64-gnu": "*",
-    "@natmri/rust-napi-linux-arm64-musl": "*"
+    "@natmri/rust-napi-win32-arm64-msvc": "*",
+    "@natmri/rust-napi-win32-ia32-msvc": "*",
+    "@natmri/rust-napi-win32-x64-msvc": "*"
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "^2.14.6"
   }
 }
