@@ -1,0 +1,11 @@
+{
+  "name": "@natmri/platform",
+  "version": "0.0.0",
+  "description": "natmri platform compat package",
+  "scripts": {
+    "build": "tsup"
+  },
+  "dependencies": {
+    "@natmri/rust-napi": "workspace:*"
+  }
+}
