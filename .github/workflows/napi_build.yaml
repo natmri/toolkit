@@ -2,8 +2,8 @@ name: Build N-API
 
 env:
   DEBUG: napi:*
-  APPNAME: rsut-napi
-  APP_DIR: packages/napi
+  APPNAME: platform-napi
+  APP_DIR: packages/platform-napi
   MACOSX_DEPLOYMENT_TARGET: '10.13'
 
 on:

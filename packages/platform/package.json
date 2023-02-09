@@ -33,6 +33,6 @@
     "build": "tsup"
   },
   "dependencies": {
-    "@natmri/rust-napi": "workspace:*"
+    "@natmri/platform-napi": "workspace:*"
   }
 }

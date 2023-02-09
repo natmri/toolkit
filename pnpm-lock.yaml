@@ -20,17 +20,17 @@ importers:
       typescript: 4.9.5
       vitest: 0.28.4
 
-  packages/napi:
+  packages/platform:
+    specifiers:
+      '@natmri/platform-napi': workspace:*
+    dependencies:
+      '@natmri/platform-napi': link:../platform-napi
+
+  packages/platform-napi:
     specifiers:
       '@napi-rs/cli': ^2.14.6
     devDependencies:
       '@napi-rs/cli': 2.14.6
-
-  packages/platform:
-    specifiers:
-      '@natmri/rust-napi': workspace:*
-    dependencies:
-      '@natmri/rust-napi': link:../napi
 
 packages:
 

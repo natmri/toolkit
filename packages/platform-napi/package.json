@@ -1,0 +1,55 @@
+{
+  "name": "@natmri/platform-napi",
+  "version": "0.0.0",
+  "description": "Node.js binding for Rust",
+  "license": "LGPL-3.0-or-later",
+  "homepage": "https://github.com/natmri/toolkit",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/natmri/toolkit.git",
+    "directory": "packages/napi"
+  },
+  "bugs": "https://github.com/natmri/toolkit/issues",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "engines": {
+    "node": ">= 10"
+  },
+  "napi": {
+    "name": "platform-napi",
+    "triples": {
+      "additional": [
+        "aarch64-apple-darwin",
+        "aarch64-unknown-linux-gnu",
+        "aarch64-unknown-linux-musl",
+        "aarch64-pc-windows-msvc",
+        "armv7-unknown-linux-gnueabihf",
+        "x86_64-unknown-linux-musl",
+        "i686-pc-windows-msvc"
+      ]
+    }
+  },
+  "scripts": {
+    "artifacts": "napi artifacts",
+    "build": "napi build --platform --release",
+    "build:debug": "napi build --platform",
+    "prepublishOnly": "napi prepublish -t npm",
+    "test": "vitest --run --passWithNoTests",
+    "version": "napi version"
+  },
+  "optionalDependencies": {
+    "@natmri/platform-napi-darwin-arm64": "*",
+    "@natmri/platform-napi-darwin-x64": "*",
+    "@natmri/platform-napi-linux-arm-gnueabihf": "*",
+    "@natmri/platform-napi-linux-arm64-gnu": "*",
+    "@natmri/platform-napi-linux-arm64-musl": "*",
+    "@natmri/platform-napi-linux-x64-gnu": "*",
+    "@natmri/platform-napi-linux-x64-musl": "*",
+    "@natmri/platform-napi-win32-arm64-msvc": "*",
+    "@natmri/platform-napi-win32-ia32-msvc": "*",
+    "@natmri/platform-napi-win32-x64-msvc": "*"
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "^2.14.6"
+  }
+}
