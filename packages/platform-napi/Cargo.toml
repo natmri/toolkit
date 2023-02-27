@@ -11,8 +11,8 @@ lto = true
 
 [dependencies]
 # Default enable napi4 feature, see https://nodejs.org/api/n-api.html#node-api-version-matrix
-napi = { version = "2.10.14", features = ["full"] }
-napi-derive = "2.10.1"
+napi = { version = "2.11.2", features = ["full"] }
+napi-derive = "2.11.1"
 lazy_static = "1.4.0"
 
 [target.'cfg(windows)'.dependencies]
