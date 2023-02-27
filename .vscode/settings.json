@@ -1,5 +1,5 @@
 {
   "rust-analyzer.linkedProjects": [
-    "./packages/napi/Cargo.toml"
+    "./packages/platform-napi/Cargo.toml"
   ]
 }
