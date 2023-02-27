@@ -1,4 +1,5 @@
 use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
+use napi::JsFunction;
 
 use windows::core::PCWSTR;
 use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
@@ -15,13 +16,19 @@ pub static mut FN: Option<ThreadsafeFunction<i64>> = None;
 /// Low api implement windows 'shutdown' event for electron
 /// ref: https://github.com/paymoapp/electron-shutdown-handler/blob/master/module/WinShutdownHandler.cpp
 
-pub unsafe fn _set_main_window_handle(h_wnd: HWND) -> () {
+pub unsafe fn set_main_window_handle(h_wnd: HWND) -> () {
   MAIN_WINDOW = h_wnd;
 
   SetProcessShutdownParameters(0x3FF, 0);
 }
 
-pub unsafe fn _insert_wnd_proc_hook() -> bool {
+pub unsafe fn insert_wnd_proc_hook(callback: JsFunction) -> bool {
+  if let Ok(func) = callback.create_threadsafe_function(0, |ctx| {
+    ctx.env.create_int64(ctx.value + 1).map(|v| vec![v])
+  }) {
+    FN = Some(func)
+  }
+
   if MAIN_WINDOW.eq(&HWND::default()) {
     return false;
   }
@@ -39,7 +46,7 @@ pub unsafe fn _insert_wnd_proc_hook() -> bool {
   true
 }
 
-pub unsafe fn _remove_wnd_proc_hook() -> bool {
+pub unsafe fn remove_wnd_proc_hook() -> bool {
   if MAIN_WINDOW.eq(&HWND::default()) {
     return false;
   }
@@ -52,7 +59,7 @@ pub unsafe fn _remove_wnd_proc_hook() -> bool {
   true
 }
 
-pub unsafe fn _acquire_shutdown_block(reason: &str) -> bool {
+pub unsafe fn acquire_shutdown_block(reason: &str) -> bool {
   if MAIN_WINDOW.eq(&HWND::default()) {
     return false;
   }
@@ -65,7 +72,7 @@ pub unsafe fn _acquire_shutdown_block(reason: &str) -> bool {
   true
 }
 
-pub unsafe fn _release_shutdown_block() -> bool {
+pub unsafe fn release_shutdown_block() -> bool {
   if MAIN_WINDOW.eq(&HWND::default()) {
     return false;
   }
