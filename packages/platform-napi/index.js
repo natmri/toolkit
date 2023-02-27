@@ -11,61 +11,89 @@ function isMusl() {
   // For Node 10
   if (!process.report || typeof process.report.getReport !== 'function') {
     try {
-      const lddPath = require('child_process').execSync('which ldd').toString().trim()
+      const lddPath = require('child_process').execSync('which ldd').toString().trim();
       return readFileSync(lddPath, 'utf8').includes('musl')
-    }
-    catch (e) {
+    } catch (e) {
       return true
     }
-  }
-  else {
+  } else {
     const { glibcVersionRuntime } = process.report.getReport().header
     return !glibcVersionRuntime
   }
 }
 
 switch (platform) {
+  case 'android':
+    switch (arch) {
+      case 'arm64':
+        localFileExisted = existsSync(join(__dirname, 'platform-napi.android-arm64.node'))
+        try {
+          if (localFileExisted) {
+            nativeBinding = require('./platform-napi.android-arm64.node')
+          } else {
+            nativeBinding = require('@natmri/platform-napi-android-arm64')
+          }
+        } catch (e) {
+          loadError = e
+        }
+        break
+      case 'arm':
+        localFileExisted = existsSync(join(__dirname, 'platform-napi.android-arm-eabi.node'))
+        try {
+          if (localFileExisted) {
+            nativeBinding = require('./platform-napi.android-arm-eabi.node')
+          } else {
+            nativeBinding = require('@natmri/platform-napi-android-arm-eabi')
+          }
+        } catch (e) {
+          loadError = e
+        }
+        break
+      default:
+        throw new Error(`Unsupported architecture on Android ${arch}`)
+    }
+    break
   case 'win32':
     switch (arch) {
       case 'x64':
         localFileExisted = existsSync(
-          join(__dirname, 'platform-napi.win32-x64-msvc.node'),
+          join(__dirname, 'platform-napi.win32-x64-msvc.node')
         )
         try {
-          if (localFileExisted)
+          if (localFileExisted) {
             nativeBinding = require('./platform-napi.win32-x64-msvc.node')
-          else
+          } else {
             nativeBinding = require('@natmri/platform-napi-win32-x64-msvc')
-        }
-        catch (e) {
+          }
+        } catch (e) {
           loadError = e
         }
         break
       case 'ia32':
         localFileExisted = existsSync(
-          join(__dirname, 'platform-napi.win32-ia32-msvc.node'),
+          join(__dirname, 'platform-napi.win32-ia32-msvc.node')
         )
         try {
-          if (localFileExisted)
+          if (localFileExisted) {
             nativeBinding = require('./platform-napi.win32-ia32-msvc.node')
-          else
+          } else {
             nativeBinding = require('@natmri/platform-napi-win32-ia32-msvc')
-        }
-        catch (e) {
+          }
+        } catch (e) {
           loadError = e
         }
         break
       case 'arm64':
         localFileExisted = existsSync(
-          join(__dirname, 'platform-napi.win32-arm64-msvc.node'),
+          join(__dirname, 'platform-napi.win32-arm64-msvc.node')
         )
         try {
-          if (localFileExisted)
+          if (localFileExisted) {
             nativeBinding = require('./platform-napi.win32-arm64-msvc.node')
-          else
+          } else {
             nativeBinding = require('@natmri/platform-napi-win32-arm64-msvc')
-        }
-        catch (e) {
+          }
+        } catch (e) {
           loadError = e
         }
         break
@@ -76,38 +104,37 @@ switch (platform) {
   case 'darwin':
     localFileExisted = existsSync(join(__dirname, 'platform-napi.darwin-universal.node'))
     try {
-      if (localFileExisted)
+      if (localFileExisted) {
         nativeBinding = require('./platform-napi.darwin-universal.node')
-      else
+      } else {
         nativeBinding = require('@natmri/platform-napi-darwin-universal')
-
+      }
       break
-    }
-    catch {}
+    } catch {}
     switch (arch) {
       case 'x64':
         localFileExisted = existsSync(join(__dirname, 'platform-napi.darwin-x64.node'))
         try {
-          if (localFileExisted)
+          if (localFileExisted) {
             nativeBinding = require('./platform-napi.darwin-x64.node')
-          else
+          } else {
             nativeBinding = require('@natmri/platform-napi-darwin-x64')
-        }
-        catch (e) {
+          }
+        } catch (e) {
           loadError = e
         }
         break
       case 'arm64':
         localFileExisted = existsSync(
-          join(__dirname, 'platform-napi.darwin-arm64.node'),
+          join(__dirname, 'platform-napi.darwin-arm64.node')
         )
         try {
-          if (localFileExisted)
+          if (localFileExisted) {
             nativeBinding = require('./platform-napi.darwin-arm64.node')
-          else
+          } else {
             nativeBinding = require('@natmri/platform-napi-darwin-arm64')
-        }
-        catch (e) {
+          }
+        } catch (e) {
           loadError = e
         }
         break
@@ -116,17 +143,17 @@ switch (platform) {
     }
     break
   case 'freebsd':
-    if (arch !== 'x64')
+    if (arch !== 'x64') {
       throw new Error(`Unsupported architecture on FreeBSD: ${arch}`)
-
+    }
     localFileExisted = existsSync(join(__dirname, 'platform-napi.freebsd-x64.node'))
     try {
-      if (localFileExisted)
+      if (localFileExisted) {
         nativeBinding = require('./platform-napi.freebsd-x64.node')
-      else
+      } else {
         nativeBinding = require('@natmri/platform-napi-freebsd-x64')
-    }
-    catch (e) {
+      }
+    } catch (e) {
       loadError = e
     }
     break
@@ -135,29 +162,28 @@ switch (platform) {
       case 'x64':
         if (isMusl()) {
           localFileExisted = existsSync(
-            join(__dirname, 'platform-napi.linux-x64-musl.node'),
+            join(__dirname, 'platform-napi.linux-x64-musl.node')
           )
           try {
-            if (localFileExisted)
+            if (localFileExisted) {
               nativeBinding = require('./platform-napi.linux-x64-musl.node')
-            else
+            } else {
               nativeBinding = require('@natmri/platform-napi-linux-x64-musl')
-          }
-          catch (e) {
+            }
+          } catch (e) {
             loadError = e
           }
-        }
-        else {
+        } else {
           localFileExisted = existsSync(
-            join(__dirname, 'platform-napi.linux-x64-gnu.node'),
+            join(__dirname, 'platform-napi.linux-x64-gnu.node')
           )
           try {
-            if (localFileExisted)
+            if (localFileExisted) {
               nativeBinding = require('./platform-napi.linux-x64-gnu.node')
-            else
+            } else {
               nativeBinding = require('@natmri/platform-napi-linux-x64-gnu')
-          }
-          catch (e) {
+            }
+          } catch (e) {
             loadError = e
           }
         }
@@ -165,44 +191,43 @@ switch (platform) {
       case 'arm64':
         if (isMusl()) {
           localFileExisted = existsSync(
-            join(__dirname, 'platform-napi.linux-arm64-musl.node'),
+            join(__dirname, 'platform-napi.linux-arm64-musl.node')
           )
           try {
-            if (localFileExisted)
+            if (localFileExisted) {
               nativeBinding = require('./platform-napi.linux-arm64-musl.node')
-            else
+            } else {
               nativeBinding = require('@natmri/platform-napi-linux-arm64-musl')
-          }
-          catch (e) {
+            }
+          } catch (e) {
             loadError = e
           }
-        }
-        else {
+        } else {
           localFileExisted = existsSync(
-            join(__dirname, 'platform-napi.linux-arm64-gnu.node'),
+            join(__dirname, 'platform-napi.linux-arm64-gnu.node')
           )
           try {
-            if (localFileExisted)
+            if (localFileExisted) {
               nativeBinding = require('./platform-napi.linux-arm64-gnu.node')
-            else
+            } else {
               nativeBinding = require('@natmri/platform-napi-linux-arm64-gnu')
-          }
-          catch (e) {
+            }
+          } catch (e) {
             loadError = e
           }
         }
         break
       case 'arm':
         localFileExisted = existsSync(
-          join(__dirname, 'platform-napi.linux-arm-gnueabihf.node'),
+          join(__dirname, 'platform-napi.linux-arm-gnueabihf.node')
         )
         try {
-          if (localFileExisted)
+          if (localFileExisted) {
             nativeBinding = require('./platform-napi.linux-arm-gnueabihf.node')
-          else
+          } else {
             nativeBinding = require('@natmri/platform-napi-linux-arm-gnueabihf')
-        }
-        catch (e) {
+          }
+        } catch (e) {
           loadError = e
         }
         break
@@ -215,8 +240,16 @@ switch (platform) {
 }
 
 if (!nativeBinding) {
-  if (loadError)
+  if (loadError) {
     throw loadError
-
-  throw new Error('Failed to load native binding')
+  }
+  throw new Error(`Failed to load native binding`)
 }
+
+const { setMainWindowHandle, insertWndProcHook, removeWndProcHook, acquireShutdownBlock, releaseShutdownBlock } = nativeBinding
+
+module.exports.setMainWindowHandle = setMainWindowHandle
+module.exports.insertWndProcHook = insertWndProcHook
+module.exports.removeWndProcHook = removeWndProcHook
+module.exports.acquireShutdownBlock = acquireShutdownBlock
+module.exports.releaseShutdownBlock = releaseShutdownBlock
