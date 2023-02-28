@@ -5,8 +5,24 @@ mod win32;
 #[allow(unused)]
 mod windows {
   use super::win32::power;
+  use super::win32::window;
   use napi::{bindgen_prelude::*, JsBigInt};
   use napi_derive::napi;
+
+  #[napi]
+  pub fn setup_inactive_window(bigint: JsBigInt, callback: Option<JsFunction>) {
+    unsafe {
+      // step 1: set parent window
+      window::setup_interactive_parent_window(bigint);
+    }
+  }
+
+  #[napi]
+  pub fn restore_inactive_window() {
+    unsafe {
+      window::restore_interactive_parent_window();
+    }
+  }
 
   #[napi]
   pub fn set_main_window_handle(bigint: JsBigInt) {
