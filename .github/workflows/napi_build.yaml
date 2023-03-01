@@ -91,7 +91,7 @@ jobs:
             target: armv7-unknown-linux-gnueabihf
             setup: |
               sudo apt-get update
-              sudo apt-get install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf -y
+              sudo apt-get install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf pkg-config -y
             build: |
               cd $APP_DIR
               pnpm build --target=armv7-unknown-linux-gnueabihf
