@@ -1,5 +1,9 @@
 mod utils;
 
+#[cfg(linux)]
+mod linux;
+#[cfg(macos)]
+mod macos;
 #[cfg(windows)]
 mod win32;
 
@@ -63,8 +67,70 @@ mod windows {
 
 #[cfg(linux)]
 #[allow(unused)]
-mod linux {}
+mod linux {
+  use napi::{bindgen_prelude::*, JsBigInt};
+  use napi_derive::napi;
+
+  #[napi(ts_args_type = "bigint: BigInt, callback: (err: null | Error, event: InputEvent) => void")]
+  pub fn setup_interactive_window(_bigint: JsBigInt, callback: JsFunction) {
+    unsafe {
+      // step: set keyboard and mouse events
+    }
+  }
+
+  #[napi]
+  pub fn restore_interactive_window() {}
+
+  #[napi]
+  pub fn set_main_window_handle(bigint: JsBigInt) {}
+
+  #[napi]
+  pub fn insert_wnd_proc_hook(callback: JsFunction) {}
+
+  #[napi]
+  pub fn remove_wnd_proc_hook() -> bool {
+    true
+  }
+
+  #[napi]
+  pub fn acquire_shutdown_block(reason: String) -> bool {
+    true
+  }
+
+  #[napi]
+  pub fn release_shutdown_block() -> bool {
+    true
+  }
+}
 
 #[cfg(macos)]
 #[allow(unused)]
-mod macos {}
+mod macos {
+  use napi::{bindgen_prelude::*, JsBigInt};
+  use napi_derive::napi;
+
+  #[napi(ts_args_type = "bigint: BigInt, callback: (err: null | Error, event: InputEvent) => void")]
+  pub fn setup_interactive_window(_bigint: JsBigInt, callback: JsFunction) {
+    unsafe {
+      // step: set keyboard and mouse events
+    }
+  }
+
+  #[napi]
+  pub fn restore_interactive_window() {}
+
+  #[napi]
+  pub fn set_main_window_handle(bigint: JsBigInt) {}
+
+  #[napi]
+  pub fn insert_wnd_proc_hook(callback: JsFunction) {}
+
+  #[napi]
+  pub fn remove_wnd_proc_hook() -> bool {}
+
+  #[napi]
+  pub fn acquire_shutdown_block(reason: String) -> bool {}
+
+  #[napi]
+  pub fn release_shutdown_block() -> bool {}
+}
