@@ -1,24 +1,29 @@
+mod utils;
+
 #[cfg(windows)]
 mod win32;
 
 #[cfg(windows)]
 #[allow(unused)]
 mod windows {
+  use super::win32::events;
   use super::win32::power;
   use super::win32::window;
   use napi::{bindgen_prelude::*, JsBigInt};
   use napi_derive::napi;
 
-  #[napi]
-  pub fn setup_inactive_window(bigint: JsBigInt, callback: Option<JsFunction>) {
+  #[napi(ts_args_type = "bigint: BigInt, callback: (err: null | Error, event: InputEvent) => void")]
+  pub fn setup_interactive_window(bigint: JsBigInt, callback: JsFunction) {
     unsafe {
       // step 1: set parent window
       window::setup_interactive_parent_window(bigint);
+      // step 2: set keyboard and mouse events
+      events::setup_interactive_window(callback);
     }
   }
 
   #[napi]
-  pub fn restore_inactive_window() {
+  pub fn restore_interactive_window() {
     unsafe {
       window::restore_interactive_parent_window();
     }

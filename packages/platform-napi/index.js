@@ -246,8 +246,11 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`)
 }
 
-const { setMainWindowHandle, insertWndProcHook, removeWndProcHook, acquireShutdownBlock, releaseShutdownBlock } = nativeBinding
+const { RawEvent, setupInteractiveWindow, restoreInteractiveWindow, setMainWindowHandle, insertWndProcHook, removeWndProcHook, acquireShutdownBlock, releaseShutdownBlock } = nativeBinding
 
+module.exports.RawEvent = RawEvent
+module.exports.setupInteractiveWindow = setupInteractiveWindow
+module.exports.restoreInteractiveWindow = restoreInteractiveWindow
 module.exports.setMainWindowHandle = setMainWindowHandle
 module.exports.insertWndProcHook = insertWndProcHook
 module.exports.removeWndProcHook = removeWndProcHook
