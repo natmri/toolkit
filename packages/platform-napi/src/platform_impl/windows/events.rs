@@ -1,4 +1,6 @@
 #![allow(non_snake_case)]
+use std::{sync::Arc, thread::JoinHandle};
+
 use crate::{
   platform_impl::platform::util::encode_wide,
   util::{InputEvent, ModifiersState, RawEvent},
@@ -20,11 +22,12 @@ use windows::{
         RAWMOUSE, RIDEV_EXINPUTSINK, RID_INPUT, RIM_TYPEKEYBOARD, RIM_TYPEMOUSE,
       },
       WindowsAndMessaging::{
-        CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW, RegisterClassExW,
-        TranslateMessage, CS_HREDRAW, CS_NOCLOSE, CS_OWNDC, CS_VREDRAW, MSG, RI_KEY_E0, RI_KEY_E1,
-        RI_MOUSE_LEFT_BUTTON_DOWN, RI_MOUSE_WHEEL, WHEEL_DELTA, WM_INPUT, WM_KEYDOWN, WM_KEYUP,
-        WM_SYSKEYDOWN, WM_SYSKEYUP, WNDCLASSEXW, WS_EX_LAYERED, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW,
-        WS_EX_TOPMOST, WS_EX_TRANSPARENT, WS_POPUP, WS_VISIBLE,
+        CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetMessageW,
+        RegisterClassExW, TranslateMessage, UnregisterClassW, CS_HREDRAW, CS_NOCLOSE, CS_OWNDC,
+        CS_VREDRAW, MSG, RI_KEY_E0, RI_KEY_E1, RI_MOUSE_LEFT_BUTTON_DOWN, RI_MOUSE_WHEEL,
+        WHEEL_DELTA, WM_INPUT, WM_KEYDOWN, WM_KEYUP, WM_SYSKEYDOWN, WM_SYSKEYUP, WNDCLASSEXW,
+        WS_EX_LAYERED, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_EX_TRANSPARENT,
+        WS_POPUP, WS_VISIBLE,
       },
     },
   },
@@ -35,6 +38,8 @@ lazy_static! {
 }
 
 static mut CALLBACK: Option<ThreadsafeFunction<InputEvent>> = None;
+static mut THREAD_HANDLE: Option<JoinHandle<()>> = None;
+static mut ENDED: bool = false;
 
 pub unsafe fn setup_interactive_window(callback: JsFunction) -> Result<()> {
   let callback: ThreadsafeFunction<InputEvent> =
@@ -42,7 +47,7 @@ pub unsafe fn setup_interactive_window(callback: JsFunction) -> Result<()> {
 
   CALLBACK = Some(callback);
 
-  std::thread::spawn(move || {
+  THREAD_HANDLE = Some(std::thread::spawn(move || {
     let mut wcx = WNDCLASSEXW::default();
     wcx.cbSize = std::mem::size_of::<WNDCLASSEXW>() as u32;
     wcx.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC | CS_NOCLOSE;
@@ -86,13 +91,29 @@ pub unsafe fn setup_interactive_window(callback: JsFunction) -> Result<()> {
 
     let mut msg = MSG::default();
 
-    while GetMessageW(&mut msg, h_wnd, 0, 0).into() {
+    while !ENDED || GetMessageW(&mut msg, h_wnd, 0, 0).into() {
       TranslateMessage(&mut msg);
       DispatchMessageW(&mut msg);
     }
-  });
+
+    // clear
+    DestroyWindow(h_wnd);
+    UnregisterClassW(wcx.lpszClassName, wcx.hInstance);
+  }));
+  ENDED = false;
 
   Ok(())
+}
+
+pub unsafe fn restore_interactive_window() {
+  if let Some(_) = CALLBACK {
+    CALLBACK = None;
+  }
+
+  if let Some(_) = THREAD_HANDLE {
+    ENDED = true;
+    THREAD_HANDLE = None;
+  }
 }
 
 unsafe fn setup_keybroad_events(

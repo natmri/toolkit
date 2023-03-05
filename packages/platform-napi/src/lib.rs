@@ -31,6 +31,7 @@ mod windows {
   pub fn restore_interactive_window() {
     unsafe {
       window::restore_interactive_parent_window();
+      events::restore_interactive_window();
     }
   }
 
