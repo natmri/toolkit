@@ -1,20 +1,19 @@
+#![allow(unused)]
+
+#[macro_use]
+extern crate bitflags;
+
+mod platform_impl;
 mod utils;
 
-#[cfg(linux)]
-mod linux;
-#[cfg(macos)]
-mod macos;
-#[cfg(windows)]
-mod win32;
-
-#[cfg(windows)]
-#[allow(unused)]
+#[cfg(windows_platform)]
 mod windows {
-  use super::win32::events;
-  use super::win32::power;
-  use super::win32::window;
-  use napi::{bindgen_prelude::*, JsBigInt};
+  use napi::{JsBigInt, JsFunction};
   use napi_derive::napi;
+
+  use crate::platform_impl::events;
+  use crate::platform_impl::power;
+  use crate::platform_impl::window;
 
   #[napi(ts_args_type = "bigint: BigInt, callback: (err: null | Error, event: InputEvent) => void")]
   pub fn setup_interactive_window(bigint: JsBigInt, callback: JsFunction) {
@@ -65,10 +64,9 @@ mod windows {
   }
 }
 
-#[cfg(linux)]
-#[allow(unused)]
+#[cfg(linux_platform)]
 mod linux {
-  use napi::{bindgen_prelude::*, JsBigInt};
+  use napi::{JsBigInt, JsFunction};
   use napi_derive::napi;
 
   #[napi(ts_args_type = "bigint: BigInt, callback: (err: null | Error, event: InputEvent) => void")]
@@ -103,10 +101,9 @@ mod linux {
   }
 }
 
-#[cfg(macos)]
-#[allow(unused)]
+#[cfg(macos_platform)]
 mod macos {
-  use napi::{bindgen_prelude::*, JsBigInt};
+  use napi::{JsBigInt, JsFunction};
   use napi_derive::napi;
 
   #[napi(ts_args_type = "bigint: BigInt, callback: (err: null | Error, event: InputEvent) => void")]

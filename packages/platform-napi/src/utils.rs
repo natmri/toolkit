@@ -1,4 +1,3 @@
-use bitflags::bitflags;
 use core::ops::BitAnd;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
