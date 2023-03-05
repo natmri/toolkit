@@ -14,10 +14,11 @@
   "engines": {
     "node": ">=14"
   },
-  "scripts": {},
+  "scripts": {
+    "build": "pnpm -r build"
+  },
   "devDependencies": {
     "@antfu/eslint-config": "^0.35.3",
-    "@antfu/ni": "^0.20.0",
     "@types/node": "18.14.2",
     "eslint": "^8.35.0",
     "pnpm": "^7.28.0",
