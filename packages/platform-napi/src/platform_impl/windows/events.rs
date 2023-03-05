@@ -1,7 +1,9 @@
 #![allow(non_snake_case)]
-use crate::utils::{InputEvent, ModifiersState, RawEvent};
+use crate::{
+  platform_impl::platform::util::encode_wide,
+  util::{InputEvent, ModifiersState, RawEvent},
+};
 use napi::{bindgen_prelude::*, threadsafe_function::ThreadsafeFunction, JsFunction};
-use wchar::{wchar_t, wchz};
 use windows::{
   core::PCWSTR,
   Win32::{
@@ -28,7 +30,10 @@ use windows::{
   },
 };
 
-const CLASS_NAME: &[wchar_t] = wchz!("NATMRI_INTERACTIVE_MESSAGE");
+lazy_static! {
+  static ref CLASS_NAME: Vec<u16> = encode_wide("NATMRI_INTERACTIVE_MESSAGE");
+}
+
 static mut CALLBACK: Option<ThreadsafeFunction<InputEvent>> = None;
 
 pub unsafe fn setup_interactive_window(callback: JsFunction) -> Result<()> {
@@ -99,8 +104,8 @@ unsafe fn setup_keybroad_events(
 
   if pressed || released {
     let scancode = raw_keybroad.MakeCode;
-    let extended = crate::utils::has_flag(raw_keybroad.Flags, RI_KEY_E0 as u16)
-      | crate::utils::has_flag(raw_keybroad.Flags, RI_KEY_E1 as u16);
+    let extended = crate::util::has_flag(raw_keybroad.Flags, RI_KEY_E0 as u16)
+      | crate::util::has_flag(raw_keybroad.Flags, RI_KEY_E1 as u16);
     let kind = if pressed {
       RawEvent::KeyDown
     } else {
@@ -170,7 +175,7 @@ unsafe fn setup_mouse_events(raw_mouse: RAWMOUSE, callback: ThreadsafeFunction<I
 }
 
 fn key_pressed(vkey: VIRTUAL_KEY) -> bool {
-  unsafe { crate::utils::has_flag(GetKeyState(vkey.0 as i32), 1 << 15) }
+  unsafe { crate::util::has_flag(GetKeyState(vkey.0 as i32), 1 << 15) }
 }
 
 fn get_key_mods() -> ModifiersState {

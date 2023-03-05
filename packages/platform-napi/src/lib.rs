@@ -2,9 +2,11 @@
 
 #[macro_use]
 extern crate bitflags;
+#[macro_use]
+extern crate lazy_static;
 
 mod platform_impl;
-mod utils;
+mod util;
 
 #[cfg(windows_platform)]
 mod windows {

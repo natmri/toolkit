@@ -1,5 +1,4 @@
 use napi::JsBigInt;
-use wchar::{wchar_t, wchz};
 use windows::{
   core::PCWSTR,
   Win32::{
@@ -11,13 +10,17 @@ use windows::{
   },
 };
 
-const PROGMAN: &[wchar_t] = wchz!("Progman");
-const PROGMAN_MANAGER: &[wchar_t] = wchz!("Program Manager");
-const SHELL_DLL_DEF_VIEW: &[wchar_t] = wchz!("SHELLDLL_DefView");
-const SYS_LIST_VIEW: &[wchar_t] = wchz!("SysListView32");
-const FOLDER_VIEW: &[wchar_t] = wchz!("FolderView");
-const WORKER_W: &[wchar_t] = wchz!("WorkerW");
-const EMPTY: &[wchar_t] = wchz!("");
+use super::util::encode_wide;
+
+lazy_static! {
+  static ref PROGMAN: Vec<u16> = encode_wide("Progman");
+  static ref PROGMAN_MANAGER: Vec<u16> = encode_wide("Program Manager");
+  static ref SHELL_DLL_DEF_VIEW: Vec<u16> = encode_wide("SHELLDLL_DefView");
+  static ref SYS_LIST_VIEW: Vec<u16> = encode_wide("SysListView32");
+  static ref FOLDER_VIEW: Vec<u16> = encode_wide("FolderView");
+  static ref WORKER_W: Vec<u16> = encode_wide("WorkerW");
+  static ref EMPTY: Vec<u16> = encode_wide("");
+}
 
 static mut WORKER_WINDOW_HANDLER: HWND = HWND(0);
 static mut DEF_VIEW_WINDOW_HANDLER: HWND = HWND(0);
