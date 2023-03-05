@@ -125,11 +125,17 @@ mod macos {
   pub fn insert_wnd_proc_hook(callback: JsFunction) {}
 
   #[napi]
-  pub fn remove_wnd_proc_hook() -> bool {}
+  pub fn remove_wnd_proc_hook() -> bool {
+    true
+  }
 
   #[napi]
-  pub fn acquire_shutdown_block(reason: String) -> bool {}
+  pub fn acquire_shutdown_block(reason: String) -> bool {
+    true
+  }
 
   #[napi]
-  pub fn release_shutdown_block() -> bool {}
+  pub fn release_shutdown_block() -> bool {
+    true
+  }
 }
