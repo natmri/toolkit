@@ -11,15 +11,8 @@ on:
   push:
     branches:
       - main
-    tags-ignore:
-      - '**'
-    paths-ignore:
-      - '**/*.md'
-      - LICENSE
-      - '**/*.gitignore'
-      - .editorconfig
-      - docs/**
-  pull_request:
+    paths:
+      - 'packages/platform-napi/**'
     
 concurrency: 
   group: ${{ github.workflow }}-${{ github.ref }}
