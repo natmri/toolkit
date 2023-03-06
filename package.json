@@ -16,7 +16,7 @@
   },
   "scripts": {
     "build": "pnpm -r build",
-    "release": "bumpp --execute \"pnpm build\" -r --no-push"
+    "release": "pnpm -r release -filter '!*-napi'"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^0.35.3",

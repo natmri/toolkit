@@ -30,7 +30,9 @@
     "node": ">=14"
   },
   "scripts": {
-    "build": "tsup"
+    "build": "tsup",
+    "watch": "tsup --watch",
+    "release": "bumpp --execute \"pnpm build\" --no-push"
   },
   "peerDependencies": {
     "electron": ">=12"
