@@ -15,11 +15,13 @@
     "node": ">=14"
   },
   "scripts": {
-    "build": "pnpm -r build"
+    "build": "pnpm -r build",
+    "release": "bumpp --execute \"pnpm build\" -r --no-push"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^0.35.3",
     "@types/node": "18.14.2",
+    "bumpp": "9.0.0",
     "eslint": "^8.35.0",
     "pnpm": "^7.28.0",
     "tsup": "^6.6.3",
