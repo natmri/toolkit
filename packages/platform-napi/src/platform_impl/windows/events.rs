@@ -5,7 +5,7 @@ use crate::{
   platform_impl::platform::util::encode_wide,
   util::{InputEvent, ModifiersState, RawEvent},
 };
-use napi::{bindgen_prelude::*, threadsafe_function::ThreadsafeFunction, JsFunction};
+use napi::{bindgen_prelude::*, threadsafe_function::ThreadsafeFunction, JsBigInt, JsFunction};
 use windows::{
   core::PCWSTR,
   Win32::{
@@ -22,12 +22,13 @@ use windows::{
         RAWMOUSE, RIDEV_EXINPUTSINK, RID_INPUT, RIM_TYPEKEYBOARD, RIM_TYPEMOUSE,
       },
       WindowsAndMessaging::{
-        CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetMessageW,
-        RegisterClassExW, TranslateMessage, UnregisterClassW, CS_HREDRAW, CS_NOCLOSE, CS_OWNDC,
-        CS_VREDRAW, MSG, RI_KEY_E0, RI_KEY_E1, RI_MOUSE_LEFT_BUTTON_DOWN, RI_MOUSE_WHEEL,
-        WHEEL_DELTA, WM_INPUT, WM_KEYDOWN, WM_KEYUP, WM_SYSKEYDOWN, WM_SYSKEYUP, WNDCLASSEXW,
-        WS_EX_LAYERED, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_EX_TRANSPARENT,
-        WS_POPUP, WS_VISIBLE,
+        CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetMessageW, IsWindow,
+        PostMessageW, RegisterClassExW, TranslateMessage, UnregisterClassW, CS_HREDRAW, CS_NOCLOSE,
+        CS_OWNDC, CS_VREDRAW, MSG, RI_KEY_E0, RI_KEY_E1, RI_MOUSE_LEFT_BUTTON_DOWN,
+        RI_MOUSE_LEFT_BUTTON_UP, RI_MOUSE_RIGHT_BUTTON_DOWN, RI_MOUSE_RIGHT_BUTTON_UP,
+        RI_MOUSE_WHEEL, WHEEL_DELTA, WM_INPUT, WM_KEYDOWN, WM_KEYUP, WM_LBUTTONDOWN, WM_LBUTTONUP,
+        WM_MOUSEMOVE, WM_SYSKEYDOWN, WM_SYSKEYUP, WNDCLASSEXW, WS_EX_LAYERED, WS_EX_NOACTIVATE,
+        WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_EX_TRANSPARENT, WS_POPUP, WS_VISIBLE,
       },
     },
   },
@@ -38,16 +39,27 @@ lazy_static! {
 }
 
 static mut CALLBACK: Option<ThreadsafeFunction<InputEvent>> = None;
-static mut THREAD_HANDLE: Option<JoinHandle<()>> = None;
-static mut ENDED: bool = false;
+static mut WINDOW: Option<HWND> = None;
 
-pub unsafe fn setup_interactive_window(callback: JsFunction) -> Result<()> {
-  let callback: ThreadsafeFunction<InputEvent> =
-    callback.create_threadsafe_function(0, |ctx| Ok(vec![ctx.value]))?;
+pub unsafe fn setup_interactive_window(
+  window: JsBigInt,
+  callback: Option<JsFunction>,
+) -> Result<()> {
+  if let Some(callback) = callback {
+    let callback: ThreadsafeFunction<InputEvent> =
+      callback.create_threadsafe_function(0, |ctx| Ok(vec![ctx.value]))?;
 
-  CALLBACK = Some(callback);
+    CALLBACK = Some(callback);
+  }
 
-  THREAD_HANDLE = Some(std::thread::spawn(move || {
+  if let Ok((window, _)) = window.get_u64() {
+    let window = HWND(window as isize);
+    if IsWindow(window).as_bool() {
+      WINDOW = Some(window);
+    }
+  }
+
+  std::thread::spawn(move || {
     let mut wcx = WNDCLASSEXW::default();
     wcx.cbSize = std::mem::size_of::<WNDCLASSEXW>() as u32;
     wcx.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC | CS_NOCLOSE;
@@ -91,7 +103,7 @@ pub unsafe fn setup_interactive_window(callback: JsFunction) -> Result<()> {
 
     let mut msg = MSG::default();
 
-    while !ENDED || GetMessageW(&mut msg, h_wnd, 0, 0).into() {
+    while GetMessageW(&mut msg, h_wnd, 0, 0).into() {
       TranslateMessage(&mut msg);
       DispatchMessageW(&mut msg);
     }
@@ -99,8 +111,7 @@ pub unsafe fn setup_interactive_window(callback: JsFunction) -> Result<()> {
     // clear
     DestroyWindow(h_wnd);
     UnregisterClassW(wcx.lpszClassName, wcx.hInstance);
-  }));
-  ENDED = false;
+  });
 
   Ok(())
 }
@@ -109,17 +120,9 @@ pub unsafe fn restore_interactive_window() {
   if let Some(_) = CALLBACK {
     CALLBACK = None;
   }
-
-  if let Some(_) = THREAD_HANDLE {
-    ENDED = true;
-    THREAD_HANDLE = None;
-  }
 }
 
-unsafe fn setup_keybroad_events(
-  raw_keybroad: RAWKEYBOARD,
-  callback: ThreadsafeFunction<InputEvent>,
-) {
+unsafe fn setup_keybroad_events(raw_keybroad: RAWKEYBOARD) {
   let pressed = raw_keybroad.Message == WM_KEYDOWN || raw_keybroad.Message == WM_SYSKEYDOWN;
   let released = raw_keybroad.Message == WM_KEYUP || raw_keybroad.Message == WM_SYSKEYUP;
 
@@ -138,59 +141,124 @@ unsafe fn setup_keybroad_events(
     {
       let virtual_keycode = vkey;
 
-      callback.call(
-        Ok(InputEvent {
-          kind,
-          scancode,
-          virtual_keycode: virtual_keycode.0 as u32,
-          modifiers: get_key_mods().bits(),
-          ..Default::default()
-        }),
-        napi::threadsafe_function::ThreadsafeFunctionCallMode::Blocking,
-      );
+      if let Some(callback) = CALLBACK.clone() {
+        callback.call(
+          Ok(InputEvent {
+            kind,
+            scancode,
+            virtual_keycode: virtual_keycode.0 as u32,
+            modifiers: get_key_mods().bits(),
+            ..Default::default()
+          }),
+          napi::threadsafe_function::ThreadsafeFunctionCallMode::NonBlocking,
+        );
+      }
+
+      if let Some(window) = WINDOW {
+        let mut lparam = raw_keybroad.MakeCode as u32;
+        let mut lparam = lparam.reverse_bits();
+        lparam |= 1_u32 | lparam;
+        lparam |= 1_u32 << 24;
+        lparam |= 0_u32 << 29;
+        if !pressed {
+          lparam |= 3_u32 << 30;
+        }
+
+        PostMessageW(
+          window,
+          raw_keybroad.Message,
+          WPARAM(raw_keybroad.VKey as usize),
+          LPARAM(lparam as isize),
+        );
+      }
     }
   }
 }
 
-unsafe fn setup_mouse_events(raw_mouse: RAWMOUSE, callback: ThreadsafeFunction<InputEvent>) {
-  match raw_mouse.Anonymous.Anonymous.usButtonFlags as u32 {
-    // handle mouse left button
-    RI_MOUSE_LEFT_BUTTON_DOWN => {
-      callback.call(
-        Ok(InputEvent {
-          kind: RawEvent::MouseDown,
-          x: raw_mouse.lLastX,
-          y: raw_mouse.lLastY,
-          ..Default::default()
-        }),
-        napi::threadsafe_function::ThreadsafeFunctionCallMode::Blocking,
-      );
-    }
-    // handle mouse middle button
-    RI_MOUSE_WHEEL => {
-      let delta = raw_mouse.Anonymous.Anonymous.usButtonData as i16 as f32 / WHEEL_DELTA as f32;
+unsafe fn setup_mouse_events(raw_mouse: RAWMOUSE) {
+  if let Some(callback) = CALLBACK.clone() {
+    match raw_mouse.Anonymous.Anonymous.usButtonFlags as u32 {
+      // handle mouse left button
+      RI_MOUSE_LEFT_BUTTON_DOWN => {
+        callback.call(
+          Ok(InputEvent {
+            kind: RawEvent::MouseDown,
+            x: raw_mouse.lLastX,
+            y: raw_mouse.lLastY,
+            ..Default::default()
+          }),
+          napi::threadsafe_function::ThreadsafeFunctionCallMode::NonBlocking,
+        );
+      }
+      RI_MOUSE_LEFT_BUTTON_UP => {
+        callback.call(
+          Ok(InputEvent {
+            kind: RawEvent::MouseUp,
+            x: raw_mouse.lLastX,
+            y: raw_mouse.lLastY,
+            ..Default::default()
+          }),
+          napi::threadsafe_function::ThreadsafeFunctionCallMode::NonBlocking,
+        );
+      }
+      // handle mouse middle button
+      RI_MOUSE_WHEEL => {
+        let delta = raw_mouse.Anonymous.Anonymous.usButtonData as i16 as f32 / WHEEL_DELTA as f32;
 
-      callback.call(
-        Ok(InputEvent {
-          kind: RawEvent::MouseWheel,
-          x: raw_mouse.lLastX,
-          y: raw_mouse.lLastY,
-          delta: delta as i32,
-          ..Default::default()
-        }),
-        napi::threadsafe_function::ThreadsafeFunctionCallMode::Blocking,
-      );
+        callback.call(
+          Ok(InputEvent {
+            kind: RawEvent::MouseWheel,
+            x: raw_mouse.lLastX,
+            y: raw_mouse.lLastY,
+            delta: delta as i32,
+            ..Default::default()
+          }),
+          napi::threadsafe_function::ThreadsafeFunctionCallMode::NonBlocking,
+        );
+      }
+      _ => {
+        callback.call(
+          Ok(InputEvent {
+            kind: RawEvent::MouseMove,
+            x: raw_mouse.lLastX,
+            y: raw_mouse.lLastY,
+            ..Default::default()
+          }),
+          napi::threadsafe_function::ThreadsafeFunctionCallMode::NonBlocking,
+        );
+      }
     }
-    _ => {
-      callback.call(
-        Ok(InputEvent {
-          kind: RawEvent::MouseMove,
-          x: raw_mouse.lLastX,
-          y: raw_mouse.lLastY,
-          ..Default::default()
-        }),
-        napi::threadsafe_function::ThreadsafeFunctionCallMode::Blocking,
-      );
+  }
+
+  if let Some(window) = WINDOW {
+    match raw_mouse.Anonymous.Anonymous.usButtonFlags as u32 {
+      RI_MOUSE_LEFT_BUTTON_UP => {
+        PostMessageW(
+          window,
+          WM_LBUTTONUP,
+          WPARAM(0x0001),
+          LPARAM((raw_mouse.lLastY << 16 | raw_mouse.lLastX) as isize),
+        );
+      }
+      RI_MOUSE_LEFT_BUTTON_DOWN => {
+        PostMessageW(
+          window,
+          WM_LBUTTONDOWN,
+          WPARAM(0x0001),
+          LPARAM((raw_mouse.lLastY << 16 | raw_mouse.lLastX) as isize),
+        );
+      }
+      RI_MOUSE_WHEEL => {}
+      RI_MOUSE_RIGHT_BUTTON_DOWN => {}
+      RI_MOUSE_RIGHT_BUTTON_UP => {}
+      _ => {
+        PostMessageW(
+          window,
+          WM_MOUSEMOVE,
+          WPARAM(0x0020),
+          LPARAM((raw_mouse.lLastY << 16 | raw_mouse.lLastX) as isize),
+        );
+      }
     }
   }
 }
@@ -298,13 +366,11 @@ unsafe extern "system" fn window_proc(
 ) -> LRESULT {
   match msg {
     WM_INPUT => {
-      if let Some(callback) = &CALLBACK {
-        if let Some(data) = get_raw_input_data(HRAWINPUT(l_param.0)) {
-          if data.header.dwType.eq(&RIM_TYPEMOUSE.0) {
-            setup_mouse_events(data.data.mouse, callback.clone());
-          } else if data.header.dwType.eq(&RIM_TYPEKEYBOARD.0) {
-            setup_keybroad_events(data.data.keyboard, callback.clone());
-          }
+      if let Some(data) = get_raw_input_data(HRAWINPUT(l_param.0)) {
+        if data.header.dwType.eq(&RIM_TYPEMOUSE.0) {
+          setup_mouse_events(data.data.mouse);
+        } else if data.header.dwType.eq(&RIM_TYPEKEYBOARD.0) {
+          setup_keybroad_events(data.data.keyboard);
         }
       }
 

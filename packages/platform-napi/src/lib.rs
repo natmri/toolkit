@@ -8,6 +8,12 @@ extern crate lazy_static;
 mod platform_impl;
 mod util;
 
+/// TODO list:
+/// [ ] multiple display support
+/// [ ] interruptable interactivity
+/// [ ] keycode mapping to string
+/// [ ] improved computer power patch API
+
 #[cfg(windows_platform)]
 mod windows {
   use napi::{JsBigInt, JsFunction};
@@ -17,13 +23,15 @@ mod windows {
   use crate::platform_impl::power;
   use crate::platform_impl::window;
 
-  #[napi(ts_args_type = "bigint: BigInt, callback: (err: null | Error, event: InputEvent) => void")]
-  pub fn setup_interactive_window(bigint: JsBigInt, callback: JsFunction) {
+  #[napi(
+    ts_args_type = "window: BigInt, callback?: (err: null | Error, event: InputEvent) => void"
+  )]
+  pub fn setup_interactive_window(window: JsBigInt, callback: Option<JsFunction>) {
     unsafe {
       // step 1: set parent window
-      window::setup_interactive_parent_window(bigint);
+      window::setup_interactive_parent_window(window);
       // step 2: set keyboard and mouse events
-      events::setup_interactive_window(callback);
+      events::setup_interactive_window(window, callback);
     }
   }
 
@@ -72,8 +80,10 @@ mod linux {
   use napi::{JsBigInt, JsFunction};
   use napi_derive::napi;
 
-  #[napi(ts_args_type = "bigint: BigInt, callback: (err: null | Error, event: InputEvent) => void")]
-  pub fn setup_interactive_window(_bigint: JsBigInt, callback: JsFunction) {
+  #[napi(
+    ts_args_type = "window: BigInt, callback?: (err: null | Error, event: InputEvent) => void"
+  )]
+  pub fn setup_interactive_window(window: JsBigInt, callback: Option<JsFunction>) {
     unsafe {
       // step: set keyboard and mouse events
     }
@@ -109,8 +119,10 @@ mod macos {
   use napi::{JsBigInt, JsFunction};
   use napi_derive::napi;
 
-  #[napi(ts_args_type = "bigint: BigInt, callback: (err: null | Error, event: InputEvent) => void")]
-  pub fn setup_interactive_window(_bigint: JsBigInt, callback: JsFunction) {
+  #[napi(
+    ts_args_type = "window: BigInt, callback?: (err: null | Error, event: InputEvent) => void"
+  )]
+  pub fn setup_interactive_window(window: JsBigInt, callback: Option<JsFunction>) {
     unsafe {
       // step: set keyboard and mouse events
     }

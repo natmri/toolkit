@@ -21,7 +21,7 @@ export interface InputEvent {
   delta: number
   modifiers: number
 }
-export function setupInteractiveWindow(bigint: BigInt, callback: (err: null | Error, event: InputEvent) => void): void
+export function setupInteractiveWindow(window: BigInt, callback?: (err: null | Error, event: InputEvent) => void): void
 export function restoreInteractiveWindow(): void
 export function setMainWindowHandle(bigint: bigint): void
 export function insertWndProcHook(callback: (...args: any[]) => any): void
