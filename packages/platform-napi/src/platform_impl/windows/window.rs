@@ -105,3 +105,12 @@ unsafe extern "system" fn enum_windows_proc(h_wnd: HWND, _: LPARAM) -> BOOL {
 
   true.into()
 }
+
+mod test {
+  use crate::platform_impl::window::find_worker_window;
+
+  #[test]
+  fn test_find_worker_window() {
+    println!("{:#x}", find_worker_window().0);
+  }
+}
