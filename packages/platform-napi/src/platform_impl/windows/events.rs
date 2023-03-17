@@ -9,7 +9,7 @@ use napi::{bindgen_prelude::*, threadsafe_function::ThreadsafeFunction, JsBigInt
 use windows::{
   core::PCWSTR,
   Win32::{
-    Foundation::{HWND, LPARAM, LRESULT, WPARAM},
+    Foundation::{HWND, LPARAM, LRESULT, POINT, WPARAM},
     UI::{
       Input::{
         GetRawInputData,
@@ -22,13 +22,14 @@ use windows::{
         RAWMOUSE, RIDEV_EXINPUTSINK, RID_INPUT, RIM_TYPEKEYBOARD, RIM_TYPEMOUSE,
       },
       WindowsAndMessaging::{
-        CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetMessageW, IsWindow,
-        PostMessageW, RegisterClassExW, TranslateMessage, UnregisterClassW, CS_HREDRAW, CS_NOCLOSE,
-        CS_OWNDC, CS_VREDRAW, MSG, RI_KEY_E0, RI_KEY_E1, RI_MOUSE_LEFT_BUTTON_DOWN,
-        RI_MOUSE_LEFT_BUTTON_UP, RI_MOUSE_RIGHT_BUTTON_DOWN, RI_MOUSE_RIGHT_BUTTON_UP,
-        RI_MOUSE_WHEEL, WHEEL_DELTA, WM_INPUT, WM_KEYDOWN, WM_KEYUP, WM_LBUTTONDOWN, WM_LBUTTONUP,
-        WM_MOUSEMOVE, WM_SYSKEYDOWN, WM_SYSKEYUP, WNDCLASSEXW, WS_EX_LAYERED, WS_EX_NOACTIVATE,
-        WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_EX_TRANSPARENT, WS_POPUP, WS_VISIBLE,
+        CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetCursorPos,
+        GetMessageW, IsWindow, PostMessageW, RegisterClassExW, TranslateMessage, UnregisterClassW,
+        CS_HREDRAW, CS_NOCLOSE, CS_OWNDC, CS_VREDRAW, MSG, RI_KEY_E0, RI_KEY_E1,
+        RI_MOUSE_LEFT_BUTTON_DOWN, RI_MOUSE_LEFT_BUTTON_UP, RI_MOUSE_RIGHT_BUTTON_DOWN,
+        RI_MOUSE_RIGHT_BUTTON_UP, RI_MOUSE_WHEEL, WHEEL_DELTA, WM_INPUT, WM_KEYDOWN, WM_KEYUP,
+        WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MOUSEMOVE, WM_SYSKEYDOWN, WM_SYSKEYUP, WNDCLASSEXW,
+        WS_EX_LAYERED, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_EX_TRANSPARENT,
+        WS_POPUP, WS_VISIBLE,
       },
     },
   },
@@ -176,6 +177,12 @@ unsafe fn setup_keybroad_events(raw_keybroad: RAWKEYBOARD) {
 }
 
 unsafe fn setup_mouse_events(raw_mouse: RAWMOUSE) {
+  let mut p = POINT::default();
+
+  if !GetCursorPos(&mut p).as_bool() {
+    return;
+  }
+
   if let Some(callback) = CALLBACK.clone() {
     match raw_mouse.Anonymous.Anonymous.usButtonFlags as u32 {
       // handle mouse left button
@@ -183,8 +190,8 @@ unsafe fn setup_mouse_events(raw_mouse: RAWMOUSE) {
         callback.call(
           Ok(InputEvent {
             kind: RawEvent::MouseDown,
-            x: raw_mouse.lLastX,
-            y: raw_mouse.lLastY,
+            x: p.x,
+            y: p.y,
             ..Default::default()
           }),
           napi::threadsafe_function::ThreadsafeFunctionCallMode::NonBlocking,
@@ -194,8 +201,8 @@ unsafe fn setup_mouse_events(raw_mouse: RAWMOUSE) {
         callback.call(
           Ok(InputEvent {
             kind: RawEvent::MouseUp,
-            x: raw_mouse.lLastX,
-            y: raw_mouse.lLastY,
+            x: p.x,
+            y: p.y,
             ..Default::default()
           }),
           napi::threadsafe_function::ThreadsafeFunctionCallMode::NonBlocking,
@@ -208,8 +215,8 @@ unsafe fn setup_mouse_events(raw_mouse: RAWMOUSE) {
         callback.call(
           Ok(InputEvent {
             kind: RawEvent::MouseWheel,
-            x: raw_mouse.lLastX,
-            y: raw_mouse.lLastY,
+            x: p.x,
+            y: p.y,
             delta: delta as i32,
             ..Default::default()
           }),
@@ -220,8 +227,8 @@ unsafe fn setup_mouse_events(raw_mouse: RAWMOUSE) {
         callback.call(
           Ok(InputEvent {
             kind: RawEvent::MouseMove,
-            x: raw_mouse.lLastX,
-            y: raw_mouse.lLastY,
+            x: p.x,
+            y: p.y,
             ..Default::default()
           }),
           napi::threadsafe_function::ThreadsafeFunctionCallMode::NonBlocking,
@@ -237,7 +244,7 @@ unsafe fn setup_mouse_events(raw_mouse: RAWMOUSE) {
           window,
           WM_LBUTTONUP,
           WPARAM(0x0001),
-          LPARAM((raw_mouse.lLastY << 16 | raw_mouse.lLastX) as isize),
+          LPARAM((p.y << 16 | p.x) as isize),
         );
       }
       RI_MOUSE_LEFT_BUTTON_DOWN => {
@@ -245,7 +252,7 @@ unsafe fn setup_mouse_events(raw_mouse: RAWMOUSE) {
           window,
           WM_LBUTTONDOWN,
           WPARAM(0x0001),
-          LPARAM((raw_mouse.lLastY << 16 | raw_mouse.lLastX) as isize),
+          LPARAM((p.y << 16 | p.x) as isize),
         );
       }
       RI_MOUSE_WHEEL => {}
@@ -256,7 +263,7 @@ unsafe fn setup_mouse_events(raw_mouse: RAWMOUSE) {
           window,
           WM_MOUSEMOVE,
           WPARAM(0x0020),
-          LPARAM((raw_mouse.lLastY << 16 | raw_mouse.lLastX) as isize),
+          LPARAM((p.y << 16 | p.x) as isize),
         );
       }
     }

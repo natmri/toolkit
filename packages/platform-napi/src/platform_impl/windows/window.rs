@@ -106,11 +106,16 @@ unsafe extern "system" fn enum_windows_proc(h_wnd: HWND, _: LPARAM) -> BOOL {
   true.into()
 }
 
+#[cfg(test)]
 mod test {
+  use windows::Win32::Foundation::HWND;
+
   use crate::platform_impl::window::find_worker_window;
 
   #[test]
   fn test_find_worker_window() {
     println!("{:#x}", find_worker_window().0);
+
+    assert!(find_worker_window().ne(&HWND::default()));
   }
 }
