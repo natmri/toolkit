@@ -1,6 +1,6 @@
 {
   "name": "@natmri/platform",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "natmri platform compat package",
   "author": {
     "name": "starknt",
@@ -30,7 +30,8 @@
     "node": ">=14"
   },
   "scripts": {
-    "build": "tsup"
+    "build": "tsup",
+    "prepublish": "pnpm build"
   },
   "peerDependencies": {
     "electron": ">=12"
