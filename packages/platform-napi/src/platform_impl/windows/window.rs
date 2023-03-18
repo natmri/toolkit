@@ -79,7 +79,7 @@ fn find_worker_window() -> HWND {
 }
 
 fn find_progman_window() -> HWND {
-  unsafe { FindWindowW(PCWSTR(PROGMAN.as_ptr()), PCWSTR(PROGMAN_MANAGER.as_ptr())) }
+  unsafe { FindWindowW(PCWSTR(PROGMAN.as_ptr()), PCWSTR(EMPTY.as_ptr())) }
 }
 
 unsafe fn find_desktop_handles() -> HWND {
@@ -95,8 +95,7 @@ unsafe fn find_desktop_handles() -> HWND {
   );
 
   if FOLDER_VIEW_WINDOW_HANDLER.eq(&HWND::default()) {
-    while FOLDER_VIEW_WINDOW_HANDLER.eq(&HWND::default()) && WORKER_WINDOW_ORIG.ne(&HWND::default())
-    {
+    loop {
       WORKER_WINDOW_ORIG = FindWindowExW(
         GetDesktopWindow(),
         WORKER_WINDOW_ORIG,
@@ -109,6 +108,12 @@ unsafe fn find_desktop_handles() -> HWND {
         PCWSTR(SHELL_DLL_DEF_VIEW.as_ptr()),
         PCWSTR(EMPTY.as_ptr()),
       );
+
+      if !(FOLDER_VIEW_WINDOW_HANDLER.eq(&HWND::default())
+        && WORKER_WINDOW_ORIG.ne(&HWND::default()))
+      {
+        break;
+      }
     }
   }
 
@@ -170,7 +175,8 @@ mod test {
   fn test_worker_window() {
     unsafe {
       let win = find_desktop_handles();
-      ShowWindow(win, SW_HIDE);
+      println!("{:?}", win);
+      // assert!(win.ne(&HWND::default()));
     }
   }
 }
