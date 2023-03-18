@@ -35,6 +35,8 @@ use windows::{
   },
 };
 
+use super::window::is_desktop;
+
 lazy_static! {
   static ref CLASS_NAME: Vec<u16> = encode_wide("NATMRI_INTERACTIVE_MESSAGE");
 }
@@ -155,22 +157,24 @@ unsafe fn setup_keybroad_events(raw_keybroad: RAWKEYBOARD) {
         );
       }
 
-      if let Some(window) = WINDOW {
-        let mut lparam = raw_keybroad.MakeCode as u32;
-        let mut lparam = lparam.reverse_bits();
-        lparam |= 1_u32 | lparam;
-        lparam |= 1_u32 << 24;
-        lparam |= 0_u32 << 29;
-        if !pressed {
-          lparam |= 3_u32 << 30;
-        }
+      if !is_desktop() {
+        if let Some(window) = WINDOW {
+          let mut lparam = raw_keybroad.MakeCode as u32;
+          let mut lparam = lparam.reverse_bits();
+          lparam |= 1_u32 | lparam;
+          lparam |= 1_u32 << 24;
+          lparam |= 0_u32 << 29;
+          if !pressed {
+            lparam |= 3_u32 << 30;
+          }
 
-        PostMessageW(
-          window,
-          raw_keybroad.Message,
-          WPARAM(raw_keybroad.VKey as usize),
-          LPARAM(lparam as isize),
-        );
+          PostMessageW(
+            window,
+            raw_keybroad.Message,
+            WPARAM(raw_keybroad.VKey as usize),
+            LPARAM(lparam as isize),
+          );
+        }
       }
     }
   }
@@ -237,34 +241,36 @@ unsafe fn setup_mouse_events(raw_mouse: RAWMOUSE) {
     }
   }
 
-  if let Some(window) = WINDOW {
-    match raw_mouse.Anonymous.Anonymous.usButtonFlags as u32 {
-      RI_MOUSE_LEFT_BUTTON_UP => {
-        PostMessageW(
-          window,
-          WM_LBUTTONUP,
-          WPARAM(0x0001),
-          LPARAM((p.y << 16 | p.x) as isize),
-        );
-      }
-      RI_MOUSE_LEFT_BUTTON_DOWN => {
-        PostMessageW(
-          window,
-          WM_LBUTTONDOWN,
-          WPARAM(0x0001),
-          LPARAM((p.y << 16 | p.x) as isize),
-        );
-      }
-      RI_MOUSE_WHEEL => {}
-      RI_MOUSE_RIGHT_BUTTON_DOWN => {}
-      RI_MOUSE_RIGHT_BUTTON_UP => {}
-      _ => {
-        PostMessageW(
-          window,
-          WM_MOUSEMOVE,
-          WPARAM(0x0020),
-          LPARAM((p.y << 16 | p.x) as isize),
-        );
+  if !is_desktop() {
+    if let Some(window) = WINDOW {
+      match raw_mouse.Anonymous.Anonymous.usButtonFlags as u32 {
+        RI_MOUSE_LEFT_BUTTON_UP => {
+          PostMessageW(
+            window,
+            WM_LBUTTONUP,
+            WPARAM(0x0001),
+            LPARAM((p.y << 16 | p.x) as isize),
+          );
+        }
+        RI_MOUSE_LEFT_BUTTON_DOWN => {
+          PostMessageW(
+            window,
+            WM_LBUTTONDOWN,
+            WPARAM(0x0001),
+            LPARAM((p.y << 16 | p.x) as isize),
+          );
+        }
+        RI_MOUSE_WHEEL => {}
+        RI_MOUSE_RIGHT_BUTTON_DOWN => {}
+        RI_MOUSE_RIGHT_BUTTON_UP => {}
+        _ => {
+          PostMessageW(
+            window,
+            WM_MOUSEMOVE,
+            WPARAM(0x0020),
+            LPARAM((p.y << 16 | p.x) as isize),
+          );
+        }
       }
     }
   }
