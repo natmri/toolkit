@@ -5,7 +5,7 @@ use windows::{
     Foundation::{BOOL, HWND, LPARAM, WPARAM},
     UI::WindowsAndMessaging::{
       EnumWindows, FindWindowExW, FindWindowW, GetDesktopWindow, GetForegroundWindow,
-      SendMessageTimeoutW, SetParent, ShowWindow, SMTO_NORMAL, SW_HIDE, SW_SHOW,
+      SendMessageTimeoutW, SetParent, ShowWindow, SMTO_NORMAL, SW_HIDE, SW_SHOW, WNDENUMPROC,
     },
   },
 };
@@ -23,16 +23,35 @@ lazy_static! {
 }
 
 static mut PROGMAN_WINDOW: HWND = HWND(0);
-static mut WORKER_WINDOW_HANDLER: HWND = HWND(0);
-static mut WORKER_WINDOW_ORIG: HWND = HWND(0);
-static mut DEF_VIEW_WINDOW_HANDLER: HWND = HWND(0);
-static mut __WORKER_WINDOW_HANDLER: HWND = HWND(0);
-static mut FOLDER_VIEW_WINDOW_HANDLER: HWND = HWND(0);
+static mut WORKER_WINDOW: HWND = HWND(0);
+static mut WORKER_ORIG_WINDOW: HWND = HWND(0);
+static mut INITIALIZED: bool = false;
 
 pub unsafe fn setup_interactive_parent_window(bigint: JsBigInt) {
-  let progman = find_progman_window();
+  if !INITIALIZED {
+    initialize();
+  }
+
+  if WORKER_WINDOW.eq(&HWND::default()) {
+    find_desktop_handles();
+  }
+
+  if let Ok((h_wnd, _)) = bigint.get_u64() {
+    set_parent_workerw(HWND(h_wnd as isize));
+
+    ShowWindow(WORKER_WINDOW, SW_SHOW);
+  }
+}
+
+pub unsafe fn restore_interactive_parent_window() {
+  ShowWindow(WORKER_WINDOW, SW_HIDE);
+}
+
+unsafe fn initialize() {
+  PROGMAN_WINDOW = find_progman_window();
+
   SendMessageTimeoutW(
-    progman,
+    PROGMAN_WINDOW,
     0x052C,
     WPARAM(0xD),
     LPARAM(0x1),
@@ -41,40 +60,36 @@ pub unsafe fn setup_interactive_parent_window(bigint: JsBigInt) {
     None,
   );
 
-  if WORKER_WINDOW_ORIG.eq(&HWND::default()) {
-    find_desktop_handles();
-  }
+  EnumWindows(Some(window_proc), LPARAM::default());
 
-  if let Ok((h_wnd, _)) = bigint.get_u64() {
-    SetParent(HWND(h_wnd as isize), WORKER_WINDOW_ORIG);
-
-    ShowWindow(WORKER_WINDOW_ORIG, SW_SHOW);
-  }
+  INITIALIZED = true;
 }
 
-pub unsafe fn restore_interactive_parent_window() {
-  ShowWindow(WORKER_WINDOW_ORIG, SW_HIDE);
-  // ShowWindow(WORKER_WINDOW_HANDLER, SW_HIDE);
-}
+unsafe fn set_parent_workerw(window_handle: HWND) {
+  let ver = os_info::get().version().to_string();
+  let mut iter = ver.trim().split_terminator('.').fuse();
+  let major: u64 = iter.next().and_then(|s| s.parse().ok()).unwrap();
+  let minor: u64 = iter.next().unwrap_or("0").parse().ok().unwrap();
+  let patch: u64 = iter.next().unwrap_or("0").parse().ok().unwrap();
 
-fn find_worker_window() -> HWND {
-  unsafe {
-    let progman = find_progman_window();
-    SendMessageTimeoutW(
-      progman,
-      0x052C,
-      WPARAM(0xD),
-      LPARAM(0x1),
-      SMTO_NORMAL,
-      1000,
-      None,
-    );
-
-    if WORKER_WINDOW_HANDLER.eq(&HWND::default()) {
-      EnumWindows(Some(enum_windows_proc), LPARAM(0));
+  // Legacy, Windows 7
+  if major == 6 && minor == 1 {
+    if WORKER_WINDOW.ne(&PROGMAN_WINDOW) {
+      ShowWindow(WORKER_WINDOW, SW_HIDE);
     }
 
-    WORKER_WINDOW_HANDLER
+    let ret = SetParent(window_handle, PROGMAN_WINDOW);
+    if ret.eq(&HWND::default()) {
+      // ... error handling
+      eprintln!("Failed to set window parent")
+    }
+    WORKER_WINDOW = PROGMAN_WINDOW;
+  } else {
+    let ret = SetParent(window_handle, WORKER_WINDOW);
+    if ret.eq(&HWND::default()) {
+      // ... error handling
+      eprintln!("Failed to set window parent");
+    }
   }
 }
 
@@ -83,67 +98,71 @@ fn find_progman_window() -> HWND {
 }
 
 unsafe fn find_desktop_handles() -> HWND {
-  WORKER_WINDOW_ORIG = HWND::default();
+  if WORKER_ORIG_WINDOW.ne(&HWND::default()) {
+    return WORKER_ORIG_WINDOW;
+  }
+
+  WORKER_ORIG_WINDOW = HWND::default();
   PROGMAN_WINDOW = HWND::default();
 
   PROGMAN_WINDOW = find_progman_window();
-  FOLDER_VIEW_WINDOW_HANDLER = FindWindowExW(
+  let mut folder_view = FindWindowExW(
     PROGMAN_WINDOW,
     HWND::default(),
     PCWSTR(SHELL_DLL_DEF_VIEW.as_ptr()),
     PCWSTR(EMPTY.as_ptr()),
   );
 
-  if FOLDER_VIEW_WINDOW_HANDLER.eq(&HWND::default()) {
+  SendMessageTimeoutW(
+    PROGMAN_WINDOW,
+    0x052C,
+    WPARAM(0xD),
+    LPARAM(0x1),
+    SMTO_NORMAL,
+    1000,
+    None,
+  );
+
+  if folder_view.eq(&HWND::default()) {
     loop {
-      WORKER_WINDOW_ORIG = FindWindowExW(
+      WORKER_ORIG_WINDOW = FindWindowExW(
         GetDesktopWindow(),
-        WORKER_WINDOW_ORIG,
+        WORKER_ORIG_WINDOW,
         PCWSTR(WORKER_W.as_ptr()),
         PCWSTR(EMPTY.as_ptr()),
       );
-      FOLDER_VIEW_WINDOW_HANDLER = FindWindowExW(
-        WORKER_WINDOW_ORIG,
+      folder_view = FindWindowExW(
+        WORKER_ORIG_WINDOW,
         HWND::default(),
         PCWSTR(SHELL_DLL_DEF_VIEW.as_ptr()),
         PCWSTR(EMPTY.as_ptr()),
       );
 
-      if !(FOLDER_VIEW_WINDOW_HANDLER.eq(&HWND::default())
-        && WORKER_WINDOW_ORIG.ne(&HWND::default()))
-      {
+      if !(folder_view.eq(&HWND::default()) && WORKER_ORIG_WINDOW.ne(&HWND::default())) {
         break;
       }
     }
   }
 
-  WORKER_WINDOW_ORIG
+  WORKER_ORIG_WINDOW
 }
 
-unsafe extern "system" fn enum_windows_proc(h_wnd: HWND, _: LPARAM) -> BOOL {
-  let def_view = FindWindowExW(
-    h_wnd,
+unsafe extern "system" fn window_proc(tophandle: HWND, topparamhanle: LPARAM) -> BOOL {
+  let p = FindWindowExW(
+    tophandle,
     HWND::default(),
     PCWSTR(SHELL_DLL_DEF_VIEW.as_ptr()),
     PCWSTR(EMPTY.as_ptr()),
   );
 
-  if def_view.ne(&HWND::default()) {
-    DEF_VIEW_WINDOW_HANDLER = def_view;
-    __WORKER_WINDOW_HANDLER = h_wnd;
-    FOLDER_VIEW_WINDOW_HANDLER = FindWindowExW(
-      DEF_VIEW_WINDOW_HANDLER,
+  if p.ne(&HWND::default()) {
+    // Gets the WorkerW window after the current one.
+    WORKER_WINDOW = FindWindowExW(
       HWND::default(),
-      PCWSTR(SYS_LIST_VIEW.as_ptr()),
-      PCWSTR(FOLDER_VIEW.as_ptr()),
-    );
-    WORKER_WINDOW_HANDLER = FindWindowExW(
-      HWND::default(),
-      h_wnd,
+      tophandle,
       PCWSTR(WORKER_W.as_ptr()),
       PCWSTR(EMPTY.as_ptr()),
     );
-    return false.into();
   }
 
   true.into()
@@ -151,32 +170,39 @@ unsafe extern "system" fn enum_windows_proc(h_wnd: HWND, _: LPARAM) -> BOOL {
 
 pub unsafe fn is_desktop() -> bool {
   let window = GetForegroundWindow();
-  window.eq(&find_progman_window()) || window.eq(&WORKER_WINDOW_ORIG)
+  window.eq(&find_progman_window()) || window.eq(&find_desktop_handles())
 }
 
 #[cfg(test)]
 mod test {
   use windows::Win32::{
     Foundation::HWND,
-    UI::WindowsAndMessaging::{ShowWindow, SW_HIDE},
+    UI::WindowsAndMessaging::{GetForegroundWindow, ShowWindow, SW_HIDE},
   };
 
-  use crate::platform_impl::window::find_desktop_handles;
-  use crate::platform_impl::window::find_worker_window;
+  use crate::platform_impl::window::{find_desktop_handles, initialize, WORKER_WINDOW};
 
   #[test]
   fn test_find_worker_window() {
-    println!("{:#x}", find_worker_window().0);
+    let ver = os_info::get().version().to_string();
+    let mut iter = ver.trim().split_terminator('.').fuse();
 
-    assert!(find_worker_window().ne(&HWND::default()));
+    let major: u64 = iter.next().and_then(|s| s.parse().ok()).unwrap();
+    let minor: u64 = iter.next().unwrap_or("0").parse().ok().unwrap();
+    let patch: u64 = iter.next().unwrap_or("0").parse().ok().unwrap();
+
+    println!("major {major} minor {minor} patch {patch}");
   }
 
   #[test]
   fn test_worker_window() {
     unsafe {
       let win = find_desktop_handles();
-      println!("{:?}", win);
-      // assert!(win.ne(&HWND::default()));
+      println!("{:#x}", win.0);
+      initialize();
+      println!("{:#x}", WORKER_WINDOW.0);
+
+      assert!(win.ne(&HWND::default()));
     }
   }
 }
