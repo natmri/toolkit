@@ -1,4 +1,5 @@
 #![allow(unused)]
+#![allow(non_snake_case)]
 
 #[macro_use]
 extern crate bitflags;
@@ -27,20 +28,26 @@ mod windows {
     ts_args_type = "window: BigInt, callback?: (err: null | Error, event: InputEvent) => void"
   )]
   pub fn setup_interactive_window(window: JsBigInt, callback: Option<JsFunction>) {
-    unsafe {
-      // step 1: set parent window
-      window::setup_interactive_parent_window(window);
-      // step 2: set keyboard and mouse events
-      events::setup_interactive_window(window, callback);
-    }
+    // step 1: set parent window
+    window::setup_interactive_parent_window(window);
+    // step 2: set keyboard and mouse events
+    events::setup_interactive_window(window, callback);
+  }
+
+  #[napi]
+  pub fn get_desktop_icon_visibility() -> bool {
+    window::get_desktop_icon_visibility()
+  }
+
+  #[napi]
+  pub fn set_desktop_icon_visibility(isVisible: bool) {
+    window::set_desktop_icon_visibility(isVisible)
   }
 
   #[napi]
   pub fn restore_interactive_window() {
-    unsafe {
-      window::restore_interactive_parent_window();
-      events::restore_interactive_window();
-    }
+    window::restore_interactive_parent_window();
+    events::restore_interactive_window();
   }
 
   #[napi]
@@ -93,6 +100,14 @@ mod linux {
   pub fn restore_interactive_window() {}
 
   #[napi]
+  pub fn get_desktop_icon_visibility() -> bool {
+    true
+  }
+
+  #[napi]
+  pub fn set_desktop_icon_visibility(isVisible: bool) {}
+
+  #[napi]
   pub fn set_main_window_handle(bigint: JsBigInt) {}
 
   #[napi]
@@ -130,6 +145,14 @@ mod macos {
 
   #[napi]
   pub fn restore_interactive_window() {}
+
+  #[napi]
+  pub fn get_desktop_icon_visibility() -> bool {
+    true
+  }
+
+  #[napi]
+  pub fn set_desktop_icon_visibility(isVisible: bool) {}
 
   #[napi]
   pub fn set_main_window_handle(bigint: JsBigInt) {}

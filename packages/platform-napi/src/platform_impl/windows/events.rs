@@ -1,4 +1,3 @@
-#![allow(non_snake_case)]
 use std::{sync::Arc, thread::JoinHandle};
 
 use crate::{
@@ -44,84 +43,85 @@ lazy_static! {
 static mut CALLBACK: Option<ThreadsafeFunction<InputEvent>> = None;
 static mut WINDOW: Option<HWND> = None;
 
-pub unsafe fn setup_interactive_window(
-  window: JsBigInt,
-  callback: Option<JsFunction>,
-) -> Result<()> {
-  if let Some(callback) = callback {
-    let callback: ThreadsafeFunction<InputEvent> =
-      callback.create_threadsafe_function(0, |ctx| Ok(vec![ctx.value]))?;
+pub fn setup_interactive_window(window: JsBigInt, callback: Option<JsFunction>) -> Result<()> {
+  unsafe {
+    if let Some(callback) = callback {
+      let callback: ThreadsafeFunction<InputEvent> =
+        callback.create_threadsafe_function(0, |ctx| Ok(vec![ctx.value]))?;
 
-    CALLBACK = Some(callback);
-  }
-
-  if let Ok((window, _)) = window.get_u64() {
-    let window = HWND(window as isize);
-    if IsWindow(window).as_bool() {
-      WINDOW = Some(window);
-    }
-  }
-
-  std::thread::spawn(move || {
-    let mut wcx = WNDCLASSEXW::default();
-    wcx.cbSize = std::mem::size_of::<WNDCLASSEXW>() as u32;
-    wcx.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC | CS_NOCLOSE;
-    wcx.lpszClassName = PCWSTR(CLASS_NAME.as_ptr());
-    wcx.lpfnWndProc = Some(window_proc);
-
-    RegisterClassExW(&wcx);
-
-    let h_wnd = CreateWindowExW(
-      WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_TOPMOST | WS_EX_TRANSPARENT | WS_EX_NOACTIVATE,
-      PCWSTR(CLASS_NAME.as_ptr()),
-      None,
-      WS_VISIBLE | WS_POPUP,
-      0,
-      0,
-      1,
-      1,
-      None,
-      None,
-      None,
-      None,
-    );
-
-    let mut mouse_raw_input_device = RAWINPUTDEVICE::default();
-    let mut keyboard_raw_input_device = RAWINPUTDEVICE::default();
-
-    mouse_raw_input_device.usUsagePage = 0x01;
-    mouse_raw_input_device.usUsage = 0x06;
-    mouse_raw_input_device.dwFlags = RIDEV_EXINPUTSINK;
-    mouse_raw_input_device.hwndTarget = h_wnd;
-
-    keyboard_raw_input_device.usUsagePage = 0x01;
-    keyboard_raw_input_device.usUsage = 0x02;
-    keyboard_raw_input_device.dwFlags = RIDEV_EXINPUTSINK;
-    keyboard_raw_input_device.hwndTarget = h_wnd;
-
-    RegisterRawInputDevices(
-      &[mouse_raw_input_device, keyboard_raw_input_device],
-      std::mem::size_of::<RAWINPUTDEVICE>() as u32,
-    );
-
-    let mut msg = MSG::default();
-
-    while GetMessageW(&mut msg, h_wnd, 0, 0).into() {
-      TranslateMessage(&mut msg);
-      DispatchMessageW(&mut msg);
+      CALLBACK = Some(callback);
     }
 
-    // clear
-    DestroyWindow(h_wnd);
-    UnregisterClassW(wcx.lpszClassName, wcx.hInstance);
-  });
+    if let Ok((window, _)) = window.get_u64() {
+      let window = HWND(window as isize);
+      if IsWindow(window).as_bool() {
+        WINDOW = Some(window);
+      }
+    }
+
+    std::thread::spawn(move || {
+      let mut wcx = WNDCLASSEXW::default();
+      wcx.cbSize = std::mem::size_of::<WNDCLASSEXW>() as u32;
+      wcx.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC | CS_NOCLOSE;
+      wcx.lpszClassName = PCWSTR(CLASS_NAME.as_ptr());
+      wcx.lpfnWndProc = Some(window_proc);
+
+      RegisterClassExW(&wcx);
+
+      let h_wnd = CreateWindowExW(
+        WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_TOPMOST | WS_EX_TRANSPARENT | WS_EX_NOACTIVATE,
+        PCWSTR(CLASS_NAME.as_ptr()),
+        None,
+        WS_VISIBLE | WS_POPUP,
+        0,
+        0,
+        1,
+        1,
+        None,
+        None,
+        None,
+        None,
+      );
+
+      let mut mouse_raw_input_device = RAWINPUTDEVICE::default();
+      let mut keyboard_raw_input_device = RAWINPUTDEVICE::default();
+
+      mouse_raw_input_device.usUsagePage = 0x01;
+      mouse_raw_input_device.usUsage = 0x06;
+      mouse_raw_input_device.dwFlags = RIDEV_EXINPUTSINK;
+      mouse_raw_input_device.hwndTarget = h_wnd;
+
+      keyboard_raw_input_device.usUsagePage = 0x01;
+      keyboard_raw_input_device.usUsage = 0x02;
+      keyboard_raw_input_device.dwFlags = RIDEV_EXINPUTSINK;
+      keyboard_raw_input_device.hwndTarget = h_wnd;
+
+      RegisterRawInputDevices(
+        &[mouse_raw_input_device, keyboard_raw_input_device],
+        std::mem::size_of::<RAWINPUTDEVICE>() as u32,
+      );
+
+      let mut msg = MSG::default();
+
+      while GetMessageW(&mut msg, h_wnd, 0, 0).into() {
+        TranslateMessage(&mut msg);
+        DispatchMessageW(&mut msg);
+      }
+
+      // clear
+      DestroyWindow(h_wnd);
+      UnregisterClassW(wcx.lpszClassName, wcx.hInstance);
+    });
+  }
 
   Ok(())
 }
 
-pub unsafe fn restore_interactive_window() {
-  if let Some(_) = CALLBACK {
-    CALLBACK = None;
+pub fn restore_interactive_window() {
+  unsafe {
+    if let Some(_) = CALLBACK {
+      CALLBACK = None;
+    }
   }
 }
 

@@ -1,11 +1,17 @@
+use core::ops::{BitOr, BitXor};
+
 use napi::JsBigInt;
 use windows::{
   core::PCWSTR,
   Win32::{
     Foundation::{BOOL, HWND, LPARAM, WPARAM},
-    UI::WindowsAndMessaging::{
-      EnumWindows, FindWindowExW, FindWindowW, GetDesktopWindow, GetForegroundWindow,
-      SendMessageTimeoutW, SetParent, ShowWindow, SMTO_NORMAL, SW_HIDE, SW_SHOW, WNDENUMPROC,
+    UI::{
+      Shell::{SHGetSetSettings, SHELLSTATEA, SSF_HIDEICONS},
+      WindowsAndMessaging::{
+        EnumWindows, FindWindowExW, FindWindowW, GetDesktopWindow, GetForegroundWindow,
+        SendMessageTimeoutW, SendMessageW, SetParent, ShowWindow, SystemParametersInfoW,
+        SMTO_NORMAL, SPIF_UPDATEINIFILE, SPI_SETDESKWALLPAPER, SW_HIDE, SW_SHOW, WNDENUMPROC,
+      },
     },
   },
 };
@@ -27,24 +33,96 @@ static mut WORKER_WINDOW: HWND = HWND(0);
 static mut WORKER_ORIG_WINDOW: HWND = HWND(0);
 static mut INITIALIZED: bool = false;
 
-pub unsafe fn setup_interactive_parent_window(bigint: JsBigInt) {
-  if !INITIALIZED {
-    initialize();
+pub fn setup_interactive_parent_window(bigint: JsBigInt) {
+  unsafe {
+    if !INITIALIZED {
+      initialize();
+    }
+
+    if WORKER_WINDOW.eq(&HWND::default()) {
+      find_desktop_handles();
+    }
+
+    if let Ok((h_wnd, _)) = bigint.get_u64() {
+      set_parent_workerw(HWND(h_wnd as isize));
+
+      ShowWindow(WORKER_WINDOW, SW_SHOW);
+    }
   }
+}
 
-  if WORKER_WINDOW.eq(&HWND::default()) {
-    find_desktop_handles();
-  }
+pub fn restore_interactive_parent_window() {
+  unsafe {
+    if !INITIALIZED {
+      return;
+    }
 
-  if let Ok((h_wnd, _)) = bigint.get_u64() {
-    set_parent_workerw(HWND(h_wnd as isize));
-
+    SystemParametersInfoW(SPI_SETDESKWALLPAPER, 0, None, SPIF_UPDATEINIFILE);
     ShowWindow(WORKER_WINDOW, SW_SHOW);
   }
 }
 
-pub unsafe fn restore_interactive_parent_window() {
-  ShowWindow(WORKER_WINDOW, SW_HIDE);
+pub fn get_desktop_icon_visibility() -> bool {
+  let mut state = SHELLSTATEA::default();
+
+  unsafe {
+    SHGetSetSettings(Some(&mut state), SSF_HIDEICONS, BOOL(0));
+  }
+
+  state._bitfield1 & 0x00001000_i32 == 0x00001000_i32
+}
+
+pub fn set_desktop_icon_visibility(isVisible: bool) {
+  unsafe {
+    if get_desktop_icon_visibility().bitxor(isVisible) {
+      SendMessageW(
+        find_desktop_shell_dll_def_view(),
+        0x0111,
+        WPARAM(0x7402),
+        LPARAM::default(),
+      );
+    }
+  }
+}
+
+unsafe fn find_desktop_shell_dll_def_view() -> HWND {
+  let mut hShellViewWin = HWND::default();
+  let mut hWorkerW = HWND::default();
+
+  let hProgman = find_progman_window();
+  let hDesktopWnd = GetDesktopWindow();
+
+  if hProgman.ne(&HWND::default()) {
+    hShellViewWin = FindWindowExW(
+      hProgman,
+      HWND::default(),
+      PCWSTR(SHELL_DLL_DEF_VIEW.as_ptr()),
+      PCWSTR(EMPTY.as_ptr()),
+    );
+
+    if hShellViewWin.eq(&HWND::default()) {
+      loop {
+        hWorkerW = FindWindowExW(
+          hDesktopWnd,
+          hWorkerW,
+          PCWSTR(WORKER_W.as_ptr()),
+          PCWSTR(EMPTY.as_ptr()),
+        );
+        hShellViewWin = FindWindowExW(
+          hWorkerW,
+          HWND::default(),
+          PCWSTR(SHELL_DLL_DEF_VIEW.as_ptr()),
+          PCWSTR(EMPTY.as_ptr()),
+        );
+
+        if !(hShellViewWin.eq(&HWND::default()) && hWorkerW.ne(&HWND::default())) {
+          break;
+        }
+      }
+    }
+  }
+
+  hShellViewWin
 }
 
 unsafe fn initialize() {
@@ -94,7 +172,7 @@ unsafe fn set_parent_workerw(window_handle: HWND) {
 }
 
 fn find_progman_window() -> HWND {
-  unsafe { FindWindowW(PCWSTR(PROGMAN.as_ptr()), PCWSTR(EMPTY.as_ptr())) }
+  unsafe { FindWindowW(PCWSTR(PROGMAN.as_ptr()), PCWSTR(PROGMAN_MANAGER.as_ptr())) }
 }
 
 unsafe fn find_desktop_handles() -> HWND {
@@ -176,11 +254,14 @@ pub unsafe fn is_desktop() -> bool {
 #[cfg(test)]
 mod test {
   use windows::Win32::{
-    Foundation::HWND,
-    UI::WindowsAndMessaging::{GetForegroundWindow, ShowWindow, SW_HIDE},
+    Foundation::{HWND, LPARAM, WPARAM},
+    UI::WindowsAndMessaging::{GetForegroundWindow, SendMessageW, ShowWindow, SW_HIDE},
   };
 
-  use crate::platform_impl::window::{find_desktop_handles, initialize, WORKER_WINDOW};
+  use crate::platform_impl::window::{
+    find_desktop_handles, find_desktop_shell_dll_def_view, get_desktop_icon_visibility, initialize,
+    WORKER_WINDOW,
+  };
 
   #[test]
   fn test_find_worker_window() {
@@ -197,12 +278,22 @@ mod test {
   #[test]
   fn test_worker_window() {
     unsafe {
-      let win = find_desktop_handles();
-      println!("{:#x}", win.0);
-      initialize();
-      println!("{:#x}", WORKER_WINDOW.0);
+      println!("{:?}", find_desktop_shell_dll_def_view());
+      println!("{:?}", get_desktop_icon_visibility());
 
-      assert!(win.ne(&HWND::default()));
+      // SendMessageW(
+      //   find_desktop_shell_dll_def_view(),
+      //   0x0111,
+      //   WPARAM(0x7402),
+      //   LPARAM::default(),
+      // );
+
+      // let win = find_desktop_handles();
+      // println!("{:#x}", win.0);
+      // initialize();
+      // println!("{:#x}", WORKER_WINDOW.0);
+
+      // assert!(win.ne(&HWND::default()));
     }
   }
 }

@@ -22,6 +22,8 @@ export interface InputEvent {
   modifiers: number
 }
 export function setupInteractiveWindow(window: BigInt, callback?: (err: null | Error, event: InputEvent) => void): void
+export function getDesktopIconVisibility(): boolean
+export function setDesktopIconVisibility(isVisible: boolean): void
 export function restoreInteractiveWindow(): void
 export function setMainWindowHandle(bigint: bigint): void
 export function insertWndProcHook(callback: (...args: any[]) => any): void
