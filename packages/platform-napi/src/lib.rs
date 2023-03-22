@@ -45,6 +45,11 @@ mod windows {
   }
 
   #[napi]
+  pub fn is_desktop() -> bool {
+    window::is_desktop()
+  }
+
+  #[napi]
   pub fn restore_interactive_window() {
     window::restore_interactive_parent_window();
     events::restore_interactive_window();
@@ -111,6 +116,11 @@ mod linux {
   pub fn set_main_window_handle(bigint: JsBigInt) {}
 
   #[napi]
+  pub fn is_desktop() -> bool {
+    false
+  }
+
+  #[napi]
   pub fn insert_wnd_proc_hook(callback: JsFunction) {}
 
   #[napi]
@@ -156,6 +166,11 @@ mod macos {
 
   #[napi]
   pub fn set_main_window_handle(bigint: JsBigInt) {}
+
+  #[napi]
+  pub fn is_desktop() -> bool {
+    false
+  }
 
   #[napi]
   pub fn insert_wnd_proc_hook(callback: JsFunction) {}

@@ -249,9 +249,11 @@ unsafe extern "system" fn window_proc(tophandle: HWND, topparamhanle: LPARAM) ->
   true.into()
 }
 
-pub unsafe fn is_desktop() -> bool {
-  let window = GetForegroundWindow();
-  window.eq(&find_progman_window()) || window.eq(&find_desktop_handles())
+pub fn is_desktop() -> bool {
+  unsafe {
+    let window = GetForegroundWindow();
+    window.eq(&find_progman_window()) || window.eq(&find_desktop_handles())
+  }
 }
 
 #[cfg(test)]
@@ -263,7 +265,8 @@ mod test {
 
   use crate::platform_impl::window::{
     find_desktop_handles, find_desktop_shell_dll_def_view, find_progman_window,
-    get_desktop_icon_visibility, initialize, set_desktop_icon_visibility, WORKER_WINDOW,
+    get_desktop_icon_visibility, initialize, is_desktop, set_desktop_icon_visibility,
+    WORKER_WINDOW,
   };
 
   #[test]
@@ -280,5 +283,14 @@ mod test {
     assert!(!get_desktop_icon_visibility());
     set_desktop_icon_visibility(true);
     assert!(get_desktop_icon_visibility());
+  }
+
+  #[test]
+  fn test_is_desktop() {
+    loop {
+      println!("{}", is_desktop());
+
+      std::thread::sleep(std::time::Duration::from_secs(3));
+    }
   }
 }
