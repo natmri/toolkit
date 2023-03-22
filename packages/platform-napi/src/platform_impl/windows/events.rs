@@ -1,5 +1,3 @@
-use std::{sync::Arc, thread::JoinHandle};
-
 use crate::{
   platform_impl::platform::util::encode_wide,
   util::{InputEvent, ModifiersState, RawEvent},
@@ -157,7 +155,7 @@ unsafe fn setup_keybroad_events(raw_keybroad: RAWKEYBOARD) {
         );
       }
 
-      if !is_desktop() {
+      if is_desktop() {
         if let Some(window) = WINDOW {
           let mut lparam = raw_keybroad.MakeCode as u32;
           let mut lparam = lparam.reverse_bits();
@@ -241,7 +239,7 @@ unsafe fn setup_mouse_events(raw_mouse: RAWMOUSE) {
     }
   }
 
-  if !is_desktop() {
+  if is_desktop() {
     if let Some(window) = WINDOW {
       match raw_mouse.Anonymous.Anonymous.usButtonFlags as u32 {
         RI_MOUSE_LEFT_BUTTON_UP => {

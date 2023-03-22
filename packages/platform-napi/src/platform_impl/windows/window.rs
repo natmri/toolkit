@@ -1,4 +1,4 @@
-use core::ops::{BitOr, BitXor};
+use core::ops::BitXor;
 
 use napi::JsBigInt;
 use windows::{
@@ -10,7 +10,7 @@ use windows::{
       WindowsAndMessaging::{
         EnumWindows, FindWindowExW, FindWindowW, GetDesktopWindow, GetForegroundWindow,
         SendMessageTimeoutW, SendMessageW, SetParent, ShowWindow, SystemParametersInfoW,
-        SMTO_NORMAL, SPIF_UPDATEINIFILE, SPI_SETDESKWALLPAPER, SW_HIDE, SW_SHOW, WNDENUMPROC,
+        SMTO_NORMAL, SPIF_UPDATEINIFILE, SPI_SETDESKWALLPAPER, SW_HIDE, SW_SHOW,
       },
     },
   },
@@ -25,7 +25,6 @@ lazy_static! {
   static ref SYS_LIST_VIEW: Vec<u16> = encode_wide("SysListView32");
   static ref FOLDER_VIEW: Vec<u16> = encode_wide("FolderView");
   static ref WORKER_W: Vec<u16> = encode_wide("WorkerW");
-  static ref EMPTY: Vec<u16> = encode_wide("");
 }
 
 static mut PROGMAN_WINDOW: HWND = HWND(0);
@@ -69,7 +68,7 @@ pub fn get_desktop_icon_visibility() -> bool {
     SHGetSetSettings(Some(&mut state), SSF_HIDEICONS, BOOL(0));
   }
 
-  state._bitfield1 & 0x00001000_i32 == 0x00001000_i32
+  !(state._bitfield1 & 0x00001000_i32 == 0x00001000_i32)
 }
 
 pub fn set_desktop_icon_visibility(isVisible: bool) {
@@ -85,38 +84,40 @@ pub fn set_desktop_icon_visibility(isVisible: bool) {
   }
 }
 
-unsafe fn find_desktop_shell_dll_def_view() -> HWND {
+fn find_desktop_shell_dll_def_view() -> HWND {
   let mut hShellViewWin = HWND::default();
   let mut hWorkerW = HWND::default();
 
-  let hProgman = find_progman_window();
-  let hDesktopWnd = GetDesktopWindow();
+  unsafe {
+    let hProgman = find_progman_window();
+    let hDesktopWnd = GetDesktopWindow();
 
-  if hProgman.ne(&HWND::default()) {
-    hShellViewWin = FindWindowExW(
-      hProgman,
-      HWND::default(),
-      PCWSTR(SHELL_DLL_DEF_VIEW.as_ptr()),
-      PCWSTR(EMPTY.as_ptr()),
-    );
+    if hProgman.ne(&HWND::default()) {
+      hShellViewWin = FindWindowExW(
+        hProgman,
+        HWND::default(),
+        PCWSTR(SHELL_DLL_DEF_VIEW.as_ptr()),
+        PCWSTR::null(),
+      );
 
-    if hShellViewWin.eq(&HWND::default()) {
-      loop {
-        hWorkerW = FindWindowExW(
-          hDesktopWnd,
-          hWorkerW,
-          PCWSTR(WORKER_W.as_ptr()),
-          PCWSTR(EMPTY.as_ptr()),
-        );
-        hShellViewWin = FindWindowExW(
-          hWorkerW,
-          HWND::default(),
-          PCWSTR(SHELL_DLL_DEF_VIEW.as_ptr()),
-          PCWSTR(EMPTY.as_ptr()),
-        );
+      if hShellViewWin.eq(&HWND::default()) {
+        loop {
+          hWorkerW = FindWindowExW(
+            hDesktopWnd,
+            hWorkerW,
+            PCWSTR(WORKER_W.as_ptr()),
+            PCWSTR::null(),
+          );
+          hShellViewWin = FindWindowExW(
+            hWorkerW,
+            HWND::default(),
+            PCWSTR(SHELL_DLL_DEF_VIEW.as_ptr()),
+            PCWSTR::null(),
+          );
 
-        if !(hShellViewWin.eq(&HWND::default()) && hWorkerW.ne(&HWND::default())) {
-          break;
+          if !(hShellViewWin.eq(&HWND::default()) && hWorkerW.ne(&HWND::default())) {
+            break;
+          }
         }
       }
     }
@@ -175,54 +176,56 @@ fn find_progman_window() -> HWND {
   unsafe { FindWindowW(PCWSTR(PROGMAN.as_ptr()), PCWSTR(PROGMAN_MANAGER.as_ptr())) }
 }
 
-unsafe fn find_desktop_handles() -> HWND {
-  if WORKER_ORIG_WINDOW.ne(&HWND::default()) {
-    return WORKER_ORIG_WINDOW;
-  }
+fn find_desktop_handles() -> HWND {
+  unsafe {
+    if WORKER_ORIG_WINDOW.ne(&HWND::default()) {
+      return WORKER_ORIG_WINDOW;
+    }
 
-  WORKER_ORIG_WINDOW = HWND::default();
-  PROGMAN_WINDOW = HWND::default();
+    WORKER_ORIG_WINDOW = HWND::default();
+    PROGMAN_WINDOW = HWND::default();
 
-  PROGMAN_WINDOW = find_progman_window();
-  let mut folder_view = FindWindowExW(
-    PROGMAN_WINDOW,
-    HWND::default(),
-    PCWSTR(SHELL_DLL_DEF_VIEW.as_ptr()),
-    PCWSTR(EMPTY.as_ptr()),
-  );
+    PROGMAN_WINDOW = find_progman_window();
+    let mut folder_view = FindWindowExW(
+      PROGMAN_WINDOW,
+      HWND::default(),
+      PCWSTR(SHELL_DLL_DEF_VIEW.as_ptr()),
+      PCWSTR::null(),
+    );
 
-  SendMessageTimeoutW(
-    PROGMAN_WINDOW,
-    0x052C,
-    WPARAM(0xD),
-    LPARAM(0x1),
-    SMTO_NORMAL,
-    1000,
-    None,
-  );
+    SendMessageTimeoutW(
+      PROGMAN_WINDOW,
+      0x052C,
+      WPARAM(0xD),
+      LPARAM(0x1),
+      SMTO_NORMAL,
+      1000,
+      None,
+    );
 
-  if folder_view.eq(&HWND::default()) {
-    loop {
-      WORKER_ORIG_WINDOW = FindWindowExW(
-        GetDesktopWindow(),
-        WORKER_ORIG_WINDOW,
-        PCWSTR(WORKER_W.as_ptr()),
-        PCWSTR(EMPTY.as_ptr()),
-      );
-      folder_view = FindWindowExW(
-        WORKER_ORIG_WINDOW,
-        HWND::default(),
-        PCWSTR(SHELL_DLL_DEF_VIEW.as_ptr()),
-        PCWSTR(EMPTY.as_ptr()),
-      );
+    if folder_view.eq(&HWND::default()) {
+      loop {
+        WORKER_ORIG_WINDOW = FindWindowExW(
+          GetDesktopWindow(),
+          WORKER_ORIG_WINDOW,
+          PCWSTR(WORKER_W.as_ptr()),
+          PCWSTR::null(),
+        );
+        folder_view = FindWindowExW(
+          WORKER_ORIG_WINDOW,
+          HWND::default(),
+          PCWSTR(SHELL_DLL_DEF_VIEW.as_ptr()),
+          PCWSTR::null(),
+        );
 
-      if !(folder_view.eq(&HWND::default()) && WORKER_ORIG_WINDOW.ne(&HWND::default())) {
-        break;
+        if !(folder_view.eq(&HWND::default()) && WORKER_ORIG_WINDOW.ne(&HWND::default())) {
+          break;
+        }
       }
     }
-  }
 
-  WORKER_ORIG_WINDOW
+    WORKER_ORIG_WINDOW
+  }
 }
 
 unsafe extern "system" fn window_proc(tophandle: HWND, topparamhanle: LPARAM) -> BOOL {
@@ -230,7 +233,7 @@ unsafe extern "system" fn window_proc(tophandle: HWND, topparamhanle: LPARAM) ->
     tophandle,
     HWND::default(),
     PCWSTR(SHELL_DLL_DEF_VIEW.as_ptr()),
-    PCWSTR(EMPTY.as_ptr()),
+    PCWSTR::null(),
   );
 
   if p.ne(&HWND::default()) {
@@ -239,7 +242,7 @@ unsafe extern "system" fn window_proc(tophandle: HWND, topparamhanle: LPARAM) ->
       HWND::default(),
       tophandle,
       PCWSTR(WORKER_W.as_ptr()),
-      PCWSTR(EMPTY.as_ptr()),
+      PCWSTR::null(),
     );
   }
 
@@ -259,41 +262,23 @@ mod test {
   };
 
   use crate::platform_impl::window::{
-    find_desktop_handles, find_desktop_shell_dll_def_view, get_desktop_icon_visibility, initialize,
-    WORKER_WINDOW,
+    find_desktop_handles, find_desktop_shell_dll_def_view, find_progman_window,
+    get_desktop_icon_visibility, initialize, set_desktop_icon_visibility, WORKER_WINDOW,
   };
 
   #[test]
-  fn test_find_worker_window() {
-    let ver = os_info::get().version().to_string();
-    let mut iter = ver.trim().split_terminator('.').fuse();
-
-    let major: u64 = iter.next().and_then(|s| s.parse().ok()).unwrap();
-    let minor: u64 = iter.next().unwrap_or("0").parse().ok().unwrap();
-    let patch: u64 = iter.next().unwrap_or("0").parse().ok().unwrap();
-
-    println!("major {major} minor {minor} patch {patch}");
+  fn test_find_window() {
+    assert!(find_progman_window().ne(&HWND::default()));
+    assert!(find_desktop_handles().ne(&HWND::default()));
+    assert!(find_desktop_shell_dll_def_view().ne(&HWND::default()));
   }
 
   #[test]
-  fn test_worker_window() {
-    unsafe {
-      println!("{:?}", find_desktop_shell_dll_def_view());
-      println!("{:?}", get_desktop_icon_visibility());
-
-      // SendMessageW(
-      //   find_desktop_shell_dll_def_view(),
-      //   0x0111,
-      //   WPARAM(0x7402),
-      //   LPARAM::default(),
-      // );
-
-      // let win = find_desktop_handles();
-      // println!("{:#x}", win.0);
-      // initialize();
-      // println!("{:#x}", WORKER_WINDOW.0);
-
-      // assert!(win.ne(&HWND::default()));
-    }
+  fn test_desktop_icon_visibility() {
+    assert!(get_desktop_icon_visibility());
+    set_desktop_icon_visibility(false);
+    assert!(!get_desktop_icon_visibility());
+    set_desktop_icon_visibility(true);
+    assert!(get_desktop_icon_visibility());
   }
 }
