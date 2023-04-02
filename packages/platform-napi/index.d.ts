@@ -26,8 +26,5 @@ export function getDesktopIconVisibility(): boolean
 export function setDesktopIconVisibility(isVisible: boolean): void
 export function isDesktop(): boolean
 export function restoreInteractiveWindow(): void
-export function setMainWindowHandle(bigint: bigint): void
-export function insertWndProcHook(callback: (...args: any[]) => any): void
-export function removeWndProcHook(): boolean
-export function acquireShutdownBlock(reason: string): boolean
-export function releaseShutdownBlock(): boolean
+export function createShutdownBlocker(reason: string, callback: (...args: any[]) => any): void
+export function destroyShutdownBlocker(): void

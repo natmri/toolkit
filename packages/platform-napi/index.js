@@ -246,7 +246,7 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`)
 }
 
-const { RawEvent, setupInteractiveWindow, getDesktopIconVisibility, setDesktopIconVisibility, isDesktop, restoreInteractiveWindow, setMainWindowHandle, insertWndProcHook, removeWndProcHook, acquireShutdownBlock, releaseShutdownBlock } = nativeBinding
+const { RawEvent, setupInteractiveWindow, getDesktopIconVisibility, setDesktopIconVisibility, isDesktop, restoreInteractiveWindow, createShutdownBlocker, destroyShutdownBlocker } = nativeBinding
 
 module.exports.RawEvent = RawEvent
 module.exports.setupInteractiveWindow = setupInteractiveWindow
@@ -254,8 +254,5 @@ module.exports.getDesktopIconVisibility = getDesktopIconVisibility
 module.exports.setDesktopIconVisibility = setDesktopIconVisibility
 module.exports.isDesktop = isDesktop
 module.exports.restoreInteractiveWindow = restoreInteractiveWindow
-module.exports.setMainWindowHandle = setMainWindowHandle
-module.exports.insertWndProcHook = insertWndProcHook
-module.exports.removeWndProcHook = removeWndProcHook
-module.exports.acquireShutdownBlock = acquireShutdownBlock
-module.exports.releaseShutdownBlock = releaseShutdownBlock
+module.exports.createShutdownBlocker = createShutdownBlocker
+module.exports.destroyShutdownBlocker = destroyShutdownBlocker

@@ -13,7 +13,7 @@ mod util;
 /// [ ] multiple display support
 /// [ ] interruptable interactivity
 /// [ ] keycode mapping to string
-/// [ ] improved computer power patch API
+/// [x] improved computer power patch API
 
 #[cfg(windows_platform)]
 mod windows {
@@ -56,34 +56,17 @@ mod windows {
   }
 
   #[napi]
-  pub fn set_main_window_handle(bigint: JsBigInt) {
+  pub fn create_shutdown_blocker(reason: String, callback: JsFunction) {
     unsafe {
-      if let Ok((h_wnd, _)) = bigint.get_u64() {
-        power::set_main_window_handle(windows::Win32::Foundation::HWND(h_wnd as isize));
-      }
+      power::create_shutdown_blocker(reason.as_str(), callback);
     }
   }
 
   #[napi]
-  pub fn insert_wnd_proc_hook(callback: JsFunction) {
+  pub fn destroy_shutdown_blocker() {
     unsafe {
-      power::insert_wnd_proc_hook(callback);
+      power::destroy_shutdown_blocker();
     }
-  }
-
-  #[napi]
-  pub fn remove_wnd_proc_hook() -> bool {
-    unsafe { power::remove_wnd_proc_hook() }
-  }
-
-  #[napi]
-  pub fn acquire_shutdown_block(reason: String) -> bool {
-    unsafe { power::acquire_shutdown_block(reason.as_str()) }
-  }
-
-  #[napi]
-  pub fn release_shutdown_block() -> bool {
-    unsafe { power::release_shutdown_block() }
   }
 }
 
@@ -121,22 +104,10 @@ mod linux {
   }
 
   #[napi]
-  pub fn insert_wnd_proc_hook(callback: JsFunction) {}
+  pub fn create_shutdown_blocker(reason: String, callback: JsFunction) {}
 
   #[napi]
-  pub fn remove_wnd_proc_hook() -> bool {
-    true
-  }
-
-  #[napi]
-  pub fn acquire_shutdown_block(reason: String) -> bool {
-    true
-  }
-
-  #[napi]
-  pub fn release_shutdown_block() -> bool {
-    true
-  }
+  pub fn destroy_shutdown_blocker() {}
 }
 
 #[cfg(macos_platform)]
@@ -173,20 +144,8 @@ mod macos {
   }
 
   #[napi]
-  pub fn insert_wnd_proc_hook(callback: JsFunction) {}
+  pub fn create_shutdown_blocker(reason: String, callback: JsFunction) {}
 
   #[napi]
-  pub fn remove_wnd_proc_hook() -> bool {
-    true
-  }
-
-  #[napi]
-  pub fn acquire_shutdown_block(reason: String) -> bool {
-    true
-  }
-
-  #[napi]
-  pub fn release_shutdown_block() -> bool {
-    true
-  }
+  pub fn destroy_shutdown_blocker() {}
 }
