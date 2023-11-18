@@ -1,3 +1,4 @@
+import process from 'node:process'
 import type { BrowserWindow } from 'electron'
 import type { InputEvent } from '@natmri/platform-napi'
 import { createShutdownBlocker, destroyShutdownBlocker, setupInteractiveWindow } from '@natmri/platform-napi'
