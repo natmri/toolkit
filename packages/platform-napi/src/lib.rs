@@ -112,6 +112,7 @@ mod linux {
 
 #[cfg(macos_platform)]
 mod macos {
+  use crate::platform_impl::events;
   use napi::{JsBigInt, JsFunction};
   use napi_derive::napi;
 
@@ -119,13 +120,13 @@ mod macos {
     ts_args_type = "window: BigInt, callback?: (err: null | Error, event: InputEvent) => void"
   )]
   pub fn setup_interactive_window(window: JsBigInt, callback: Option<JsFunction>) {
-    unsafe {
-      // step: set keyboard and mouse events
-    }
+    events::setup_interactive_window(window, callback);
   }
 
   #[napi]
-  pub fn restore_interactive_window() {}
+  pub fn restore_interactive_window() {
+    events::restore_interactive_window();
+  }
 
   #[napi]
   pub fn get_desktop_icon_visibility() -> bool {
@@ -140,7 +141,7 @@ mod macos {
 
   #[napi]
   pub fn is_desktop() -> bool {
-    false
+    true
   }
 
   #[napi]

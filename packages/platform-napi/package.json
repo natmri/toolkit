@@ -50,6 +50,6 @@
     "@natmri/platform-napi-win32-x64-msvc": "*"
   },
   "devDependencies": {
-    "@napi-rs/cli": "^2.14.6"
+    "@napi-rs/cli": "^2.18.2"
   }
 }

@@ -1,7 +1,7 @@
 import process from 'node:process'
 import type { BrowserWindow } from 'electron'
 import type { InputEvent } from '@natmri/platform-napi'
-import { createShutdownBlocker, destroyShutdownBlocker, setupInteractiveWindow } from '@natmri/platform-napi'
+import { RawEvent, createShutdownBlocker, destroyShutdownBlocker, setupInteractiveWindow } from '@natmri/platform-napi'
 import { powerMonitor as _powerMonitor } from 'electron'
 
 export { restoreInteractiveWindow as destroyInteractiveWindow } from '@natmri/platform-napi'
@@ -170,8 +170,59 @@ export class PowerMonitor {
 
 export const powerMonitor = new PowerMonitor()
 
-export function createInteractiveWindow(window: BrowserWindow, callback?: (err: Error | null, event: InputEvent) => void): void {
+export function createInteractiveWindow(window: BrowserWindow): void {
   const windowHandle = window.getNativeWindowHandle().readBigUint64LE()
+  let lastX: number
+  let lastY: number
+  setupInteractiveWindow(windowHandle, (err, event) => {
+    if (err)
+      return
 
-  setupInteractiveWindow(windowHandle, callback)
+    switch (event.kind) {
+      case RawEvent.KeyDown:
+        window.webContents.sendInputEvent({
+          type: 'keyDown',
+          keyCode: 'A',
+        })
+        break
+      case RawEvent.KeyUp:
+        window.webContents.sendInputEvent({
+          type: 'keyUp',
+          keyCode: 'A',
+        })
+        break
+      case RawEvent.MouseMove:
+        lastX = event.x
+        lastY = event.y
+        window.webContents.sendInputEvent({
+          type: 'mouseMove',
+          x: event.x,
+          y: event.y,
+        })
+        break
+      case RawEvent.MouseDown:
+        window.webContents.sendInputEvent({
+          type: 'mouseDown',
+          x: event.x,
+          y: event.y,
+        })
+        break
+      case RawEvent.MouseUp:
+        window.webContents.sendInputEvent({
+          type: 'mouseUp',
+          x: lastX,
+          y: lastY,
+        })
+        break
+      case RawEvent.MouseWheel:
+        window.webContents.sendInputEvent({
+          type: 'mouseWheel',
+          deltaX: event.delta,
+          deltaY: event.delta,
+          x: lastX,
+          y: lastY,
+        })
+        break
+    }
+  })
 }

@@ -22,9 +22,10 @@ export interface InputEvent {
   modifiers: number
 }
 export function setupInteractiveWindow(window: BigInt, callback?: (err: null | Error, event: InputEvent) => void): void
+export function restoreInteractiveWindow(): void
 export function getDesktopIconVisibility(): boolean
 export function setDesktopIconVisibility(isVisible: boolean): void
+export function setMainWindowHandle(bigint: bigint): void
 export function isDesktop(): boolean
-export function restoreInteractiveWindow(): void
 export function createShutdownBlocker(reason: string, callback: (...args: any[]) => any): void
 export function destroyShutdownBlocker(): void

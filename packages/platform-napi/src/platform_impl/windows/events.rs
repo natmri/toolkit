@@ -117,7 +117,7 @@ pub fn setup_interactive_window(window: JsBigInt, callback: Option<JsFunction>) 
 
 pub fn restore_interactive_window() {
   unsafe {
-    if let Some(_) = CALLBACK {
+    if CALLBACK.is_some() {
       CALLBACK = None;
     }
   }
