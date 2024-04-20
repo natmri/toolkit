@@ -21,7 +21,6 @@ pub fn decode_wide(mut wide_c_string: &[u16]) -> OsString {
 
 macro_rules! decl_keycodes {
     ($($key:ident, $code:literal),*) => {
-        //TODO: make const when rust lang issue #49146 is fixed
         pub fn code_from_key(key: Key) -> Option<WORD> {
             match key {
                 $(
@@ -32,7 +31,6 @@ macro_rules! decl_keycodes {
             }
         }
 
-        //TODO: make const when rust lang issue #49146 is fixed
         pub fn key_from_code(code: WORD) -> Key {
             match code {
                 $(
